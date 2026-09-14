@@ -90,7 +90,12 @@ export async function ensureSeeded(): Promise<void> {
   // Production data is provisioned by the connected backend. Never create
   // operators, responders, hospitals, units, incidents, or sample messages
   // implicitly at runtime.
-  await getSql();
+  const sql = await getSql();
+  await sql.query("alter table sl_operators add column if not exists recovery_email text");
+  await sql.query("alter table sl_operators add column if not exists reset_token_hash text");
+  await sql.query("alter table sl_operators add column if not exists reset_token_expires_at timestamptz");
+  await sql.query("alter table sl_operators add column if not exists active boolean not null default true");
+  await sql.query("alter table sl_operators add column if not exists updated_at timestamptz not null default now()");
 }
 
 async function loadMutable(): Promise<Mutable> {
@@ -480,12 +485,13 @@ export async function loginOperator(input: {
 }): Promise<{ ok: true; user: string; role: Role; viewId: string; snapshot: OpsSnapshot } | { ok: false; error: string }> {
   await ensureSeeded();
   const sql = await getSql();
-  const rows = await sql.query<{ username: string; role: string; password_hash: string }>(
-    "select username, role, password_hash from sl_operators where username = $1",
+  const rows = await sql.query<{ username: string; role: string; password_hash: string; active: boolean }>(
+    "select username, role, password_hash, active from sl_operators where username = $1",
     [input.username.trim()],
   );
   const row = rows[0];
   if (!row) return { ok: false, error: "Unknown operator. Check the username." };
+  if (row.active === false) return { ok: false, error: "This staff account is inactive. Contact an administrator." };
   if (row.role !== input.role) {
     return { ok: false, error: `That account is a ${row.role} console, not ${input.role}.` };
   }
@@ -502,13 +508,13 @@ export async function loginOperator(input: {
   };
 }
 
-export async function listOperatorsDb(): Promise<{ username: string; displayName: string; role: Role }[]> {
+export async function listOperatorsDb(): Promise<{ username: string; displayName: string; role: Role; recoveryEmail: string; active: boolean; updatedAt: string }[]> {
   await ensureSeeded();
   const sql = await getSql();
-  const rows = await sql.query<{ username: string; display_name: string; role: Role }>(
-    "select username, display_name, role from sl_operators order by username",
+  const rows = await sql.query<{ username: string; display_name: string; role: Role; recovery_email: string | null; active: boolean; updated_at: Date }>(
+    "select username, display_name, role, recovery_email, active, updated_at from sl_operators order by username",
   );
-  return rows.map((row) => ({ username: row.username, displayName: row.display_name, role: row.role }));
+  return rows.map((row) => ({ username: row.username, displayName: row.display_name, role: row.role, recoveryEmail: row.recovery_email ?? "", active: row.active, updatedAt: row.updated_at.toISOString() }));
 }
 
 export async function saveOperatorDb(input: {
@@ -516,25 +522,44 @@ export async function saveOperatorDb(input: {
   displayName: string;
   role: Role;
   password?: string;
+  recoveryEmail: string;
+  active?: boolean;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   await ensureSeeded();
   const username = input.username.trim();
   const displayName = input.displayName.trim() || username;
   if (!/^[a-z0-9._-]{3,40}$/i.test(username)) return { ok: false, error: "Use 3–40 letters, numbers, dots, dashes, or underscores." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.recoveryEmail.trim())) return { ok: false, error: "Enter a valid recovery email." };
   if (input.password !== undefined && input.password.length < 8) return { ok: false, error: "Passwords must be at least 8 characters." };
   const sql = await getSql();
   const existing = await sql.query<{ username: string }>("select username from sl_operators where username = $1", [username]);
   if (!existing[0] && !input.password) return { ok: false, error: "A password is required for a new responder." };
   if (existing[0]) {
     if (input.password) {
-      await sql.query("update sl_operators set display_name = $2, role = $3, password_hash = $4 where username = $1", [username, displayName, input.role, hashPassword(username, input.password)]);
+      await sql.query("update sl_operators set display_name = $2, role = $3, password_hash = $4, recovery_email = $5, active = $6, updated_at = now(), reset_token_hash = null, reset_token_expires_at = null where username = $1", [username, displayName, input.role, hashPassword(username, input.password), input.recoveryEmail.trim(), input.active ?? true]);
     } else {
-      await sql.query("update sl_operators set display_name = $2, role = $3 where username = $1", [username, displayName, input.role]);
+      await sql.query("update sl_operators set display_name = $2, role = $3, recovery_email = $4, active = $5, updated_at = now() where username = $1", [username, displayName, input.role, input.recoveryEmail.trim(), input.active ?? true]);
     }
   } else {
-    await sql.query("insert into sl_operators (username, display_name, role, password_hash) values ($1,$2,$3,$4)", [username, displayName, input.role, hashPassword(username, input.password as string)]);
+    await sql.query("insert into sl_operators (username, display_name, role, password_hash, recovery_email, active) values ($1,$2,$3,$4,$5,$6)", [username, displayName, input.role, hashPassword(username, input.password as string), input.recoveryEmail.trim(), input.active ?? true]);
   }
   return { ok: true };
+}
+
+export async function issueOperatorResetTokenDb(usernameInput: string): Promise<{ ok: true; token: string; expiresAt: string } | { ok: false; error: string }> {
+  await ensureSeeded();
+  const username = usernameInput.trim();
+  const sql = await getSql();
+  const rows = await sql.query<{ username: string; recovery_email: string | null; active: boolean }>("select username, recovery_email, active from sl_operators where username = $1", [username]);
+  const row = rows[0];
+  if (!row) return { ok: false, error: "Staff account not found." };
+  if (!row.recovery_email) return { ok: false, error: "Add a recovery email before generating a reset token." };
+  if (!row.active) return { ok: false, error: "Activate this account before generating a reset token." };
+  const token = randomBytes(24).toString("base64url");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  await sql.query("update sl_operators set reset_token_hash = $2, reset_token_expires_at = $3, updated_at = now() where username = $1", [username, tokenHash, expiresAt]);
+  return { ok: true, token, expiresAt: expiresAt.toISOString() };
 }
 
 export async function fileReportDb(

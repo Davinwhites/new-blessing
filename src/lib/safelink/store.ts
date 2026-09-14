@@ -8,6 +8,7 @@ import {
   callProviderFn,
   listOperatorsFn,
   saveOperatorFn,
+  issueOperatorResetTokenFn,
   fileReportFn,
   loadOpsSnapshot,
   loginOperatorFn,
@@ -120,8 +121,9 @@ export interface OpsState {
   toggleEmtDuty: (id: string) => Promise<void>;
   toggleUnitStatus: () => Promise<void>;
   callProvider: (key: string) => Promise<void>;
-  listOperators: () => Promise<{ username: string; displayName: string; role: Role }[]>;
-  saveOperator: (input: { username: string; displayName: string; role: Role; password?: string }) => Promise<string | null>;
+  listOperators: () => Promise<{ username: string; displayName: string; role: Role; recoveryEmail: string; active: boolean; updatedAt: string }[]>;
+  saveOperator: (input: { username: string; displayName: string; role: Role; password?: string; recoveryEmail: string; active?: boolean }) => Promise<string | null>;
+  issueResetToken: (username: string) => Promise<{ token: string; expiresAt: string } | string>;
 }
 
 export const useOps = create<OpsState>((set, get) => ({
@@ -282,6 +284,11 @@ export const useOps = create<OpsState>((set, get) => ({
   saveOperator: async (input) => {
     const result = await saveOperatorFn({ data: input });
     return result.ok ? null : result.error;
+  },
+
+  issueResetToken: async (username) => {
+    const result = await issueOperatorResetTokenFn({ data: { username } });
+    return result.ok ? { token: result.token, expiresAt: result.expiresAt } : result.error;
   },
 
   callProvider: async (key) => {

@@ -54,10 +54,17 @@ export const listOperatorsFn = createServerFn({ method: "GET" }).handler(async (
 });
 
 export const saveOperatorFn = createServerFn({ method: "POST" })
-  .validator(z.object({ username: z.string(), displayName: z.string(), role: roleSchema, password: z.string().optional() }))
+  .validator(z.object({ username: z.string(), displayName: z.string(), role: roleSchema, password: z.string().optional(), recoveryEmail: z.string().email(), active: z.boolean().optional() }))
   .handler(async ({ data }) => {
     const { saveOperatorDb } = await import("./persist");
     return saveOperatorDb(data);
+  });
+
+export const issueOperatorResetTokenFn = createServerFn({ method: "POST" })
+  .validator(z.object({ username: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const { issueOperatorResetTokenDb } = await import("./persist");
+    return issueOperatorResetTokenDb(data.username);
   });
 
 export const fileReportFn = createServerFn({ method: "POST" })
