@@ -136,10 +136,11 @@ export function AdminOverview() {
             "Assigned",
             "Hospital",
             "Reported",
+            "Dispatch",
           ]}
         >
           {incidents.length === 0 ? (
-            <EmptyRow cols={8}>No incidents yet this session.</EmptyRow>
+            <EmptyRow cols={9}>No incidents yet this session.</EmptyRow>
           ) : (
             incidents.map((i) => (
               <tr
@@ -165,6 +166,19 @@ export function AdminOverview() {
                     : "—"}
                 </Td>
                 <Td mono>{i.time}</Td>
+                <Td>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-8 whitespace-nowrap px-2 text-xs"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectIncident(i.id);
+                    }}
+                  >
+                    {i.assigned.length > 0 ? "Manage dispatch" : "Assign dispatch"}
+                  </Button>
+                </Td>
               </tr>
             ))
           )}
