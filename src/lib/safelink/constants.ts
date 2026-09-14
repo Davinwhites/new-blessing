@@ -59,6 +59,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
     { id: "emt-registry", label: "EMT Registry" },
     { id: "callintegration", label: "Call & USSD Integration" },
     { id: "admin-analytics", label: "Analytics" },
+    { id: "admin-accounts", label: "Staff accounts" },
   ],
   public: [{ id: "public-report", label: "Report Emergency" }],
   emt: [

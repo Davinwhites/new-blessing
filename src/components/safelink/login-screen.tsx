@@ -10,6 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_USER, OPERATOR_PASSWORD, ROLE_BLURB, ROLE_TITLES } from "@/lib/safelink/constants";
@@ -168,9 +169,12 @@ export function LoginScreen() {
               {error && (
                 <p className="mb-3 text-sm text-alert">{error}</p>
               )}
-              <Button type="submit" className="mt-1 w-full font-semibold" disabled={busy}>
-                {busy ? "Signing in…" : "Sign in"}
-              </Button>
+  <Button type="submit" className="mt-1 w-full font-semibold" disabled={busy}>
+  {busy ? "Signing in…" : "Sign in"}
+  </Button>
+  <Link to="/public" className="mt-3 block text-center text-xs text-mute underline-offset-4 transition hover:text-amber hover:underline">
+  Public emergency report — no sign in required
+  </Link>
             </form>
             <p className="mt-4 text-center text-xs text-mute">
               All incidents, units and hospitals persist in the operations

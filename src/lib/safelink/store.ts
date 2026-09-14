@@ -6,6 +6,8 @@ import {
   advanceIncidentFn,
   assignManualFn,
   callProviderFn,
+  listOperatorsFn,
+  saveOperatorFn,
   fileReportFn,
   loadOpsSnapshot,
   loginOperatorFn,
@@ -118,6 +120,8 @@ export interface OpsState {
   toggleEmtDuty: (id: string) => Promise<void>;
   toggleUnitStatus: () => Promise<void>;
   callProvider: (key: string) => Promise<void>;
+  listOperators: () => Promise<{ username: string; displayName: string; role: Role }[]>;
+  saveOperator: (input: { username: string; displayName: string; role: Role; password?: string }) => Promise<string | null>;
 }
 
 export const useOps = create<OpsState>((set, get) => ({
@@ -271,6 +275,13 @@ export const useOps = create<OpsState>((set, get) => ({
 
   toggleUnitStatus: async () => {
     applySnap(set, await toggleUnitStatusFn());
+  },
+
+  listOperators: async () => listOperatorsFn(),
+
+  saveOperator: async (input) => {
+    const result = await saveOperatorFn({ data: input });
+    return result.ok ? null : result.error;
   },
 
   callProvider: async (key) => {

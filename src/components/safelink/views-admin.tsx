@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Bar,
   BarChart,
@@ -440,6 +440,70 @@ export function HospitalsView() {
               <Td mono>{h.phone}</Td>
             </tr>
           ))}
+        </DataTable>
+      </Card>
+    </div>
+  );
+}
+
+export function AdminAccountsView() {
+  const [accounts, setAccounts] = useState<{ username: string; displayName: string; role: string }[]>([]);
+  const saveOperator = useOps((s) => s.saveOperator);
+  const listOperators = useOps((s) => s.listOperators);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refreshAccounts() {
+    setAccounts(await listOperators());
+  }
+
+  useEffect(() => {
+    void listOperators().then(setAccounts);
+  }, [listOperators]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const result = await saveOperator({
+      username: String(form.get("username") || ""),
+      displayName: String(form.get("displayName") || ""),
+      role: String(form.get("role") || "ems") as never,
+      password: String(form.get("password") || "") || undefined,
+    });
+    if (result) {
+      setError(result);
+      setMessage(null);
+      return;
+    }
+    setError(null);
+    setMessage("Staff account saved securely.");
+    event.currentTarget.reset();
+    await refreshAccounts();
+  }
+
+  return (
+    <div>
+      <PageHead title="Staff accounts" sub="Create responder access and rotate passwords without exposing credentials." />
+      <Card className="mb-4">
+        <CardTitle>Change or create credentials</CardTitle>
+        {error && <Alert tone="crit">{error}</Alert>}
+        {message && <Alert tone="ok">{message}</Alert>}
+        <form onSubmit={submit} className="grid gap-3 md:grid-cols-2">
+          <Field label="Username"><Input name="username" required placeholder="responder.namutebi" /></Field>
+          <Field label="Display name"><Input name="displayName" required placeholder="Namutebi Response Team" /></Field>
+          <Field label="Console role">
+            <NativeSelect name="role" defaultValue="ems">
+              <option value="ems">EMS responder</option><option value="emt">EMT</option><option value="dispatcher">Dispatcher</option><option value="admin">Administrator</option>
+            </NativeSelect>
+          </Field>
+          <Field label="New password"><Input name="password" type="password" minLength={8} placeholder="Leave blank to keep current" /></Field>
+          <div className="md:col-span-2"><Button type="submit">Save staff account</Button></div>
+        </form>
+      </Card>
+      <Card>
+        <CardTitle>Registered staff <span className="font-mono text-[10.5px] font-normal text-mute">{accounts.length} accounts</span></CardTitle>
+        <DataTable headers={["Username", "Display name", "Role"]}>
+          {accounts.map((account) => <tr key={account.username}><Td mono>{account.username}</Td><Td>{account.displayName}</Td><Td className="text-amber">{account.role}</Td></tr>)}
         </DataTable>
       </Card>
     </div>
