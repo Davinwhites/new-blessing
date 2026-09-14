@@ -30,6 +30,7 @@ import {
   AnalyticsView,
   FleetView,
   HospitalsView,
+  NationalDirectoryView,
 } from "./views-admin";
 import {
   CallCentreView,
@@ -46,6 +47,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "admin-overview": LayoutDashboard,
   "admin-fleet": Ambulance,
   "admin-hospitals": Building2,
+  "admin-directory": Phone,
   "emt-registry": IdCard,
   callintegration: Phone,
   "admin-analytics": BarChart3,
@@ -163,6 +165,7 @@ export function AppShell() {
           {viewId === "admin-overview" && <AdminOverview />}
           {viewId === "admin-fleet" && <FleetView />}
           {viewId === "admin-hospitals" && <HospitalsView />}
+          {viewId === "admin-directory" && <NationalDirectoryView />}
           {viewId === "admin-analytics" && <AnalyticsView />}
           {viewId === "admin-accounts" && <AdminAccountsView />}
           {viewId === "callintegration" && <CallIntegrationView />}
