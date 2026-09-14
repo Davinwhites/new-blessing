@@ -17,6 +17,7 @@ import { useOps } from "@/lib/safelink/store";
 import type { Role } from "@/lib/safelink/types";
 import { cn } from "@/lib/utils";
 import { Mark } from "./mark";
+import { InstallAppPrompt } from "./install-app";
 
 const ROLES: { id: Role; icon: typeof Shield }[] = [
   { id: "admin", icon: Shield },
@@ -186,6 +187,7 @@ export function LoginScreen() {
           </div>
         </div>
       </div>
+      <InstallAppPrompt />
     </div>
   );
 }

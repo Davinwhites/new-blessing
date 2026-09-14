@@ -74,6 +74,13 @@ export function linkHospital(
       const dist = haversineKm(inc.lat, inc.lng, h.lat, h.lng);
       const label = `${h.name} ${h.tier} ${h.ownership}`;
       let score = dist;
+      const incidentDistrict = (inc.district || "").trim().toLowerCase();
+      const hospitalDistrict = (h.district || h.zone || "").trim().toLowerCase();
+      const incidentLocality = inc.location.trim().toLowerCase();
+      const hospitalLocality = (h.subcounty || h.zone || "").trim().toLowerCase();
+      if (incidentDistrict && hospitalDistrict === incidentDistrict) score -= 1000;
+      else if (incidentDistrict && hospitalDistrict.includes(incidentDistrict)) score -= 700;
+      if (incidentLocality && hospitalLocality && (incidentLocality.includes(hospitalLocality) || hospitalLocality.includes(incidentLocality))) score -= 300;
       if (/mental/i.test(label)) score += 800;
       if (h.traumaAvailable <= 0) score += 400;
       if (inc.casualties >= 4 && h.traumaAvailable < Math.ceil(inc.casualties / 4)) {
@@ -175,6 +182,7 @@ export function buildIncident(input: ReportInput, id: string): Incident {
     type: input.type,
     location: input.location,
     region: input.region || "Central",
+    district: input.district || "",
     country: input.country || "Uganda",
     lat: input.lat,
     lng: input.lng,

@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useOps } from "@/lib/safelink/store";
+import { haversineKm } from "@/lib/safelink/geo";
 import { SlaClock } from "./clock";
 import { StatusBadge, UnitBadge } from "./status";
+import { Input } from "@/components/ui/input";
 
 export function IncidentPanel() {
   const id = useOps((s) => s.selectedIncidentId);
@@ -17,10 +20,25 @@ export function IncidentPanel() {
   const reassign = useOps((s) => s.reassignHospital);
   const advance = useOps((s) => s.advanceIncident);
   const assignManual = useOps((s) => s.assignManual);
+  const [hospitalSearch, setHospitalSearch] = useState("");
 
   const inc = incidents.find((i) => i.id === id);
   if (!inc) return null;
   const call = calls.find((c) => c.incidentId === inc.id);
+  const normalizedHospitalSearch = hospitalSearch.trim().toLowerCase();
+  const rankedHospitals = hospitals
+    .filter((h) => (h.country || "Uganda") === (inc.country || "Uganda"))
+    .map((h) => {
+      const district = (h.district || h.zone || "").toLowerCase();
+      const incidentDistrict = (inc.district || "").toLowerCase();
+      const sameDistrict = Boolean(incidentDistrict && district === incidentDistrict);
+      const sameRegion = h.region.toLowerCase() === inc.region.toLowerCase();
+      const distance = Math.round(haversineKm(inc.lat, inc.lng, h.lat, h.lng) * 10) / 10;
+      return { h, sameDistrict, sameRegion, distance };
+    })
+    .filter(({ h }) => !normalizedHospitalSearch || [h.name, h.district || h.zone, h.subcounty || "", h.region].some((value) => value.toLowerCase().includes(normalizedHospitalSearch)))
+    .sort((a, b) => Number(b.sameDistrict) - Number(a.sameDistrict) || Number(b.sameRegion) - Number(a.sameRegion) || a.distance - b.distance);
+
   const freeUnits = units.filter(
     (u) =>
       u.status === "available" &&
@@ -110,20 +128,20 @@ export function IncidentPanel() {
         )}
         <div className="mb-3">
           <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.08em] text-mute">
-            Reassign hospital
+            Nearby hospital allocation
           </div>
+          <p className="mb-2 text-xs text-mute">{inc.district ? `Prioritizing ${inc.district} first, then ${inc.region}, then nearest facilities.` : `District not provided; prioritizing ${inc.region}, then nearest facilities.`}</p>
+          <Input value={hospitalSearch} onChange={(event) => setHospitalSearch(event.target.value)} placeholder="Search hospital, district, or locality" className="mb-2" />
           <NativeSelect
             value={inc.hospitalLink?.hospitalId || ""}
             onChange={(e) => reassign(inc.id, e.target.value)}
           >
             <option value="">— select hospital —</option>
-            {hospitals
-              .filter((h) => (h.country || "Uganda") === (inc.country || "Uganda"))
-              .map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name} · {h.traumaAvailable} bays
-                </option>
-              ))}
+            {rankedHospitals.slice(0, 120).map(({ h, sameDistrict, sameRegion, distance }) => (
+              <option key={h.id} value={h.id}>
+                {sameDistrict ? "Same district" : sameRegion ? "Same region" : `${distance} km`} · {h.name} · {h.traumaAvailable} bays
+              </option>
+            ))}
           </NativeSelect>
         </div>
         <div className="mb-4">

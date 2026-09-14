@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Hospital, Incident, Unit } from "@/lib/safelink/types";
@@ -62,7 +62,102 @@ function Invalidate() {
   return null;
 }
 
-export function OpsMapInner({
+type GoogleMapApi = {
+  maps: {
+    Map: new (element: HTMLElement, options: Record<string, unknown>) => unknown;
+    Marker: new (options: Record<string, unknown>) => { setMap: (map: unknown) => void; addListener?: (event: string, handler: () => void) => void };
+    InfoWindow: new (options?: Record<string, unknown>) => { open: (map: unknown, marker: unknown) => void };
+  };
+};
+
+declare global {
+  interface Window {
+    google?: GoogleMapApi;
+    __safeLinkGoogleMapsPromise?: Promise<GoogleMapApi>;
+  }
+}
+
+function loadGoogleMaps(apiKey: string) {
+  if (window.google) return Promise.resolve(window.google);
+  if (window.__safeLinkGoogleMapsPromise) return window.__safeLinkGoogleMapsPromise;
+  window.__safeLinkGoogleMapsPromise = new Promise<GoogleMapApi>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>("script[data-safelink-google-maps]");
+    if (existing) {
+      existing.addEventListener("load", () => window.google ? resolve(window.google) : reject(new Error("Google Maps unavailable")));
+      existing.addEventListener("error", () => reject(new Error("Google Maps failed to load")));
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.safelinkGoogleMaps = "true";
+    script.onload = () => window.google ? resolve(window.google) : reject(new Error("Google Maps unavailable"));
+    script.onerror = () => reject(new Error("Google Maps failed to load"));
+    document.head.appendChild(script);
+  });
+  return window.__safeLinkGoogleMapsPromise;
+}
+
+function GoogleMap({ hospitals, units, incidents, selectedId, onSelect, onFallback }: Parameters<typeof LeafletMap>[0] & { onFallback: () => void }) {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const selected = incidents.find((incident) => incident.id === selectedId);
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+
+  useEffect(() => {
+    if (!apiKey || !elementRef.current) return;
+    let disposed = false;
+    loadGoogleMaps(apiKey).then((google) => {
+      if (disposed || !elementRef.current) return;
+      const map = new google.maps.Map(elementRef.current, { center: { lat: 1.25, lng: 32.4 }, zoom: 7, streetViewControl: false, mapTypeControl: false });
+      const markers: Array<{ lat: number; lng: number; title: string; color: string; id?: string }> = [...hospitals.map((hospital) => ({ lat: hospital.lat, lng: hospital.lng, title: hospital.name, color: "#55b9e8" })), ...units.map((unit) => ({ lat: unit.lat, lng: unit.lng, title: `${unit.id} · ${unit.status}`, color: "#3ddc84" })), ...incidents.map((incident) => ({ lat: incident.lat, lng: incident.lng, title: `${incident.id} · ${incident.type}`, color: "#e63946", id: incident.id }))];
+      markers.forEach((item) => {
+        const marker = new google.maps.Marker({ map, position: { lat: item.lat, lng: item.lng }, title: item.title, icon: { path: "M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z", fillColor: item.color, fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 1, scale: 1.4, anchor: { x: 12, y: 22 } } });
+        if (item.id) marker.addListener?.("click", () => onSelect?.(item.id as string));
+      });
+      if (selected) (map as { panTo: (position: { lat: number; lng: number }) => void }).panTo({ lat: selected.lat, lng: selected.lng });
+    }).catch(() => { if (!disposed) { setError("Google Maps could not load"); onFallback(); } });
+    return () => { disposed = true; };
+  }, [apiKey, hospitals, units, incidents, selected, onSelect, onFallback]);
+
+  if (!apiKey || error) return null;
+  return <div className="h-full w-full" ref={elementRef} aria-label="Live Google map" />;
+}
+
+function GoogleMapSources({ selected }: { selected?: Incident }) {
+  const location = selected ? `${selected.lat},${selected.lng}` : "1.3733,32.2903";
+  const sources = [
+    ["Hospitals", `https://www.google.com/maps/search/${selected ? `hospitals+near+${encodeURIComponent(selected.location)}` : "hospitals+in+Uganda"}/@${location},12z`],
+    ["Health centres", `https://www.google.com/maps/search/${selected ? `health+centres+near+${encodeURIComponent(selected.location)}` : "health+centres+in+Uganda"}/@${location},12z`],
+    ["Uganda overview", "https://www.google.com/maps/@1.3733,32.2903,7z"],
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
+      <span className="mr-1 text-xs font-medium text-mute">Google Maps sources{selected ? ` · ${selected.location}` : ""}</span>
+      {sources.map(([label, href]) => (
+        <a key={href} href={href} target="_blank" rel="noreferrer" className="rounded-md border border-line bg-panel px-2.5 py-1.5 text-xs text-ink transition-colors hover:border-accent hover:text-accent">
+          {label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function MapLegend({ provider }: { provider: string }) {
+  return (
+    <div className="flex flex-wrap gap-4 border-t border-line px-3 py-2.5 text-xs text-mute">
+      <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-ok" />Available unit</span>
+      <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-amber" />Unit en route</span>
+      <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-alert" />On scene / incident</span>
+      <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 bg-mute" />Hospital</span>
+      <span className="ml-auto font-mono text-[0.625rem] uppercase tracking-[0.12em]">{provider} · live positions</span>
+    </div>
+  );
+}
+
+function LeafletMap({
   hospitals,
   units,
   incidents,
@@ -82,6 +177,7 @@ export function OpsMapInner({
 
   return (
     <div className="overflow-hidden rounded-lg bg-panel-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
+      <GoogleMapSources selected={selected} />
       <div className="h-[min(56vh,440px)] min-h-[280px] w-full">
         <MapContainer
           center={UGANDA_CENTER}
@@ -156,27 +252,18 @@ export function OpsMapInner({
           ))}
         </MapContainer>
       </div>
-      <div className="flex flex-wrap gap-4 border-t border-line px-3 py-2.5 text-xs text-mute">
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-full bg-ok" />
-          Available unit
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-full bg-amber" />
-          Unit en route
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-full bg-alert" />
-          On scene / incident
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-2.5 bg-mute" />
-          Hospital
-        </span>
-        <span className="ml-auto font-mono text-[0.625rem] uppercase tracking-[0.12em]">
-          OpenStreetMap · live positions
-        </span>
-      </div>
+      <MapLegend provider="OpenStreetMap" />
     </div>
   );
 }
+
+export function OpsMapInner(props: Parameters<typeof LeafletMap>[0]) {
+  const [useFallback, setUseFallback] = useState(!import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  if (apiKey && !useFallback) {
+    const selected = props.incidents.find((incident) => incident.id === props.selectedId);
+    return <div className="overflow-hidden rounded-lg bg-panel-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"><GoogleMapSources selected={selected} /><div className="h-[min(56vh,440px)] min-h-[280px] w-full"><GoogleMap {...props} onFallback={() => setUseFallback(true)} /></div><MapLegend provider="Google Maps" /></div>;
+  }
+  return <LeafletMap {...props} />;
+}
+

@@ -14,8 +14,10 @@ const incidentStatus = z.enum([
 const reportInput = z.object({
   type: z.string(),
   location: z.string(),
-  region: z.string().optional(),
-  country: z.string().optional(),
+    region: z.string().optional(),
+    district: z.string().optional(),
+    country: z.string().optional(),
+
   lat: z.number(),
   lng: z.number(),
   casualties: z.number(),
