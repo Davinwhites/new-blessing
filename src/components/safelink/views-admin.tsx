@@ -460,14 +460,15 @@ export function AdminAccountsView() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await saveOperator({
       username: String(form.get("username") || ""), displayName: String(form.get("displayName") || ""),
       role: String(form.get("role") || "ems") as never, password: String(form.get("password") || "") || undefined,
       recoveryEmail: String(form.get("recoveryEmail") || ""), active: form.get("active") === "on",
     });
     if (result) { setError(result); setMessage(null); return; }
-    setError(null); setMessage("Staff account saved. Changes are live immediately."); event.currentTarget.reset(); await refreshAccounts();
+    setError(null); setMessage("Staff account saved. Changes are live immediately."); formElement.reset(); await refreshAccounts();
   }
 
   async function generateToken(username: string) {
