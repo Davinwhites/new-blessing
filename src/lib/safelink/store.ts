@@ -34,6 +34,12 @@ import type {
 } from "./types";
 
 const SESSION_KEY = "safelink.session.v3";
+const VALID_ROLES: Role[] = ["admin", "dispatcher", "ems", "emt"];
+const isValidSession = (value: unknown): value is OpsState["session"] => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { role?: unknown; user?: unknown };
+  return VALID_ROLES.includes(candidate.role as Role) && typeof candidate.user === "string" && candidate.user.length > 0;
+};
 
 function applySnap(
   set: (partial: Partial<OpsState>) => void,
@@ -128,6 +134,8 @@ export interface OpsState {
   issueResetToken: (username: string) => Promise<{ token: string; expiresAt: string } | string>;
 }
 
+let refreshInFlight = false;
+
 export const useOps = create<OpsState>((set, get) => ({
   hydrated: false,
   session: null,
@@ -165,9 +173,11 @@ export const useOps = create<OpsState>((set, get) => ({
             regionFilter?: string;
             lastPublicIncidentId?: string | null;
           };
+          const session = isValidSession(data.session) ? data.session : null;
+          const roleNav = session ? ROLE_NAV[session.role] : ROLE_NAV.dispatcher;
           set({
-            session: data.session ?? null,
-            viewId: data.viewId || ROLE_NAV[data.session?.role || "dispatcher"][0].id,
+            session,
+            viewId: data.viewId && roleNav.some((item) => item.id === data.viewId) ? data.viewId : roleNav[0]?.id || "public-report",
             regionFilter: data.regionFilter || "All",
             lastPublicIncidentId: data.lastPublicIncidentId ?? null,
           });
@@ -186,17 +196,23 @@ export const useOps = create<OpsState>((set, get) => ({
   },
 
   refresh: async () => {
-    const previous = get().incidents;
-    const snap = await loadOpsSnapshot();
-    applySnap(set, snap);
-    const newest = snap.incidents
+    if (refreshInFlight) return;
+    refreshInFlight = true;
+    try {
+      const previous = get().incidents;
+      const snap = await loadOpsSnapshot();
+      applySnap(set, snap);
+      const newest = snap.incidents
       .filter((incident) => !previous.some((item) => item.id === incident.id))
       .sort((a, b) => b.reportedAt - a.reportedAt)[0];
-    if (newest && get().session) {
-      set({ liveAlert: newest });
-      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-        new Notification("New SafeLink emergency", { body: `${newest.type} reported at ${newest.location}` });
+      if (newest && get().session) {
+        set({ liveAlert: newest });
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          new Notification("New SafeLink emergency", { body: `${newest.type} reported at ${newest.location}` });
+        }
       }
+    } finally {
+      refreshInFlight = false;
     }
   },
 
@@ -207,14 +223,18 @@ export const useOps = create<OpsState>((set, get) => ({
     });
     if (!res.ok) return res.error;
     applySnap(set, res.snapshot);
+    const nextSession = { role: res.role, user: res.user };
     set({
-      session: { role: res.role, user: res.user },
+      session: nextSession,
       viewId: res.viewId,
+      hydrated: true,
+      liveAlert: null,
     });
     return null;
   },
 
-  logout: () =>
+  logout: () => {
+    if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY);
     set({
       session: null,
       viewId: "admin-overview",
@@ -222,7 +242,8 @@ export const useOps = create<OpsState>((set, get) => ({
       ussdOpen: false,
       waOpen: false,
       selectedIncidentId: null,
-    }),
+    });
+  },
 
   setView: (id) => set({ viewId: id, selectedIncidentId: null }),
   setRegionFilter: (region) => set({ regionFilter: region }),
