@@ -551,6 +551,21 @@ export function NationalDirectoryView() {
     <div>
       <PageHead title="National directory" sub="Hospitals, registered ambulance units, districts, and emergency contacts. Verify community-listed numbers before dispatch." />
       <Card className="mb-4">
+        <CardTitle>Google Maps directory sources</CardTitle>
+        <p className="mb-3 text-sm text-mute">Use these public Google Maps views to cross-check facility names, locations, and contact details before adding or dispatching a record.</p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {[
+            ["Hospitals in Uganda", "https://www.google.com/maps/search/hospitals+in+Uganda"],
+            ["Health centres in Uganda", "https://www.google.com/maps/search/health+centres+in+Uganda"],
+            ["Uganda map overview", "https://www.google.com/maps/@1.3733,32.2903,7z"],
+          ].map(([label, href]) => (
+            <Button key={href} type="button" variant="secondary" onClick={() => window.open(href, "_blank", "noopener,noreferrer")}>
+              {label}
+            </Button>
+          ))}
+        </div>
+      </Card>
+      <Card className="mb-4">
         <CardTitle>National emergency contacts</CardTitle>
         <DataTable headers={["Organisation", "Contact", "Coverage", "Source status"]}>
           {contacts.map((contact) => <tr key={contact.name}><Td>{contact.name}</Td><Td mono className="text-amber">{contact.phone}</Td><Td>{contact.area}</Td><Td className="text-mute">{contact.source}</Td></tr>)}
