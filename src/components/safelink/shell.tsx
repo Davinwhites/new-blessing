@@ -30,6 +30,7 @@ import {
   AnalyticsView,
   FleetView,
   HospitalsView,
+  NationalDirectoryView,
 } from "./views-admin";
 import {
   CallCentreView,
@@ -46,6 +47,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "admin-overview": LayoutDashboard,
   "admin-fleet": Ambulance,
   "admin-hospitals": Building2,
+  "admin-directory": Phone,
   "emt-registry": IdCard,
   callintegration: Phone,
   "admin-analytics": BarChart3,
@@ -58,17 +60,19 @@ const NAV_ICONS: Record<string, LucideIcon> = {
 };
 
 export function AppShell() {
-  const session = useOps((s) => s.session)!;
+  const session = useOps((s) => s.session);
   const viewId = useOps((s) => s.viewId);
   const setView = useOps((s) => s.setView);
   const logout = useOps((s) => s.logout);
   const setUssdOpen = useOps((s) => s.setUssdOpen);
   const setWaOpen = useOps((s) => s.setWaOpen);
   const selectIncident = useOps((s) => s.selectIncident);
-  const nav = ROLE_NAV[session.role];
   const refresh = useOps((s) => s.refresh);
   const liveAlert = useOps((s) => s.liveAlert);
   const clearLiveAlert = useOps((s) => s.clearLiveAlert);
+  const safeRole = session?.role ?? "dispatcher";
+  const safeUser = session?.user ?? "";
+  const nav = ROLE_NAV[safeRole];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -83,6 +87,10 @@ export function AppShell() {
     if ("Notification" in window && Notification.permission === "default") void Notification.requestPermission();
     return () => window.clearInterval(timer);
   }, [refresh]);
+
+  if (!session) {
+    return <div className="min-h-dvh bg-navy" aria-busy="true" />;
+  }
 
   return (
     <div className="min-h-dvh bg-navy text-ink">
@@ -110,9 +118,10 @@ export function AppShell() {
             Live
           </span>
           <span className="rounded-full bg-panel px-2.5 py-1 font-mono text-[0.6875rem] text-amber shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
-            {ROLE_LABELS[session.role]}
+            {ROLE_LABELS[safeRole]}
           </span>
-          <span className="hidden max-w-[9rem] truncate sm:inline">{session.user}</span>
+          <span className="hidden max-w-[9rem] truncate sm:inline">            {safeUser}
+</span>
           <Button variant="ghost" size="sm" onClick={logout}>
             Sign out
           </Button>
@@ -163,6 +172,7 @@ export function AppShell() {
           {viewId === "admin-overview" && <AdminOverview />}
           {viewId === "admin-fleet" && <FleetView />}
           {viewId === "admin-hospitals" && <HospitalsView />}
+          {viewId === "admin-directory" && <NationalDirectoryView />}
           {viewId === "admin-analytics" && <AnalyticsView />}
           {viewId === "admin-accounts" && <AdminAccountsView />}
           {viewId === "callintegration" && <CallIntegrationView />}

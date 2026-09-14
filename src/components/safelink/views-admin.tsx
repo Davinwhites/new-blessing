@@ -505,6 +505,51 @@ export function AdminAccountsView() {
   );
 }
 
+export function NationalDirectoryView() {
+  const units = useOps((s) => s.units).filter((u) => u.type === "Ambulance");
+  const hospitals = useOps((s) => s.hospitals);
+  const [query, setQuery] = useState("");
+  const normalized = query.trim().toLowerCase();
+  const filteredUnits = units.filter((u) => [u.agency, u.region, u.zone, u.phone, u.id].some((value) => value.toLowerCase().includes(normalized)));
+  const contacts = [
+    { name: "Uganda Ministry of Health", phone: "0800-100-066", area: "National", source: "Official public contact; verify before operational use" },
+    { name: "Uganda Police emergency", phone: "999", area: "National", source: "Public emergency number; verify before operational use" },
+    { name: "National Health Facility Registry", phone: "", area: "National", source: "Official facility registry: nhfr.health.go.ug" },
+    { name: "Mulago National Referral Hospital — Medical Emergency", phone: "+256 414 675065", area: "Kampala", source: "Public hospital listing; verify before operational use" },
+    { name: "Mulago National Referral Hospital — Acute Care Unit", phone: "+256 414 675066", area: "Kampala", source: "Public hospital listing; verify before operational use" },
+    { name: "Jinja Regional Referral Hospital — Accident & Emergency", phone: "+256 414 674584", area: "Jinja", source: "Public hospital listing; verify before operational use" },
+    { name: "Jinja Regional Referral Hospital — Ambulance", phone: "+256 414 674585", area: "Jinja", source: "Public hospital listing; verify before operational use" },
+    { name: "Case Medical Centre", phone: "+256 414 250362", area: "Kampala", source: "Public provider listing; verify before operational use" },
+    { name: "International Medical Group", phone: "+256 312 200400", area: "Uganda", source: "Public provider listing; verify before operational use" },
+    { name: "City Ambulance", phone: "0800-111044", area: "Uganda", source: "Public provider listing; verify before operational use" },
+    { name: "St John Ambulance Uganda", phone: "+256 414 230671", area: "Kampala", source: "Public provider listing; verify before operational use" },
+  ];
+  return (
+    <div>
+      <PageHead title="National directory" sub="Hospitals, registered ambulance units, districts, and emergency contacts. Verify community-listed numbers before dispatch." />
+      <Card className="mb-4">
+        <CardTitle>National emergency contacts</CardTitle>
+        <DataTable headers={["Organisation", "Contact", "Coverage", "Source status"]}>
+          {contacts.map((contact) => <tr key={contact.name}><Td>{contact.name}</Td><Td mono className="text-amber">{contact.phone}</Td><Td>{contact.area}</Td><Td className="text-mute">{contact.source}</Td></tr>)}
+        </DataTable>
+      </Card>
+      <Card className="mb-4">
+        <CardTitle>Ambulance units <span className="font-mono text-[10.5px] font-normal text-mute">{filteredUnits.length} registered</span></CardTitle>
+        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search ambulance, agency, district, station, or contact" className="mb-3" />
+        <DataTable headers={["Unit", "Agency / hospital", "District / station", "Contact", "Availability"]}>
+          {filteredUnits.length === 0 ? <EmptyRow cols={5}>No ambulance records match this search.</EmptyRow> : filteredUnits.map((unit) => <tr key={unit.id}><Td mono>{unit.id}</Td><Td>{unit.agency}</Td><Td>{unit.region} · {unit.zone}</Td><Td mono>{unit.phone || "Not published"}</Td><Td><StatusBadge status={unit.status} /></Td></tr>)}
+        </DataTable>
+      </Card>
+      <Card>
+        <CardTitle>Hospitals and referral points <span className="font-mono text-[10.5px] font-normal text-mute">{hospitals.length} records</span></CardTitle>
+        <DataTable headers={["Hospital", "District / region", "Contact", "Beds available", "Trauma available"]}>
+          {hospitals.map((hospital) => <tr key={hospital.id}><Td>{hospital.name}</Td><Td>{hospital.region} · {hospital.zone}</Td><Td mono>{hospital.phone || "Not published"}</Td><Td>{hospital.bedsAvailable}/{hospital.bedsTotal}</Td><Td>{hospital.traumaAvailable}/{hospital.traumaTotal}</Td></tr>)}
+        </DataTable>
+      </Card>
+    </div>
+  );
+}
+
 export function AnalyticsView() {
   const incidents = useOps((s) => s.incidents);
   const resolved = incidents.filter((i) => i.status === "resolved").length;
