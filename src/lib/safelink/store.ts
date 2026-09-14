@@ -70,6 +70,8 @@ export interface OpsState {
   smsLog: SmsMessage[];
   lastPublicIncidentId: string | null;
   lastIntake: string | null;
+  liveAlert: Incident | null;
+  clearLiveAlert: () => void;
   selectedIncidentId: string | null;
   incidentSeq: number;
   unitSeq: number;
@@ -140,6 +142,7 @@ export const useOps = create<OpsState>((set, get) => ({
   smsLog: [],
   lastPublicIncidentId: null,
   lastIntake: null,
+  liveAlert: null,
   selectedIncidentId: null,
   incidentSeq: 1000,
   unitSeq: 40,
@@ -183,8 +186,18 @@ export const useOps = create<OpsState>((set, get) => ({
   },
 
   refresh: async () => {
+    const previous = get().incidents;
     const snap = await loadOpsSnapshot();
     applySnap(set, snap);
+    const newest = snap.incidents
+      .filter((incident) => !previous.some((item) => item.id === incident.id))
+      .sort((a, b) => b.reportedAt - a.reportedAt)[0];
+    if (newest && get().session) {
+      set({ liveAlert: newest });
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        new Notification("New SafeLink emergency", { body: `${newest.type} reported at ${newest.location}` });
+      }
+    }
   },
 
   login: async (role, user, password) => {
@@ -216,6 +229,7 @@ export const useOps = create<OpsState>((set, get) => ({
   setUssdOpen: (open) => set({ ussdOpen: open }),
   setWaOpen: (open) => set({ waOpen: open }),
   selectIncident: (id) => set({ selectedIncidentId: id }),
+  clearLiveAlert: () => set({ liveAlert: null }),
 
   fileReport: async (input) => {
     const res = await fileReportFn({ data: input });

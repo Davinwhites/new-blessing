@@ -66,6 +66,9 @@ export function AppShell() {
   const setWaOpen = useOps((s) => s.setWaOpen);
   const selectIncident = useOps((s) => s.selectIncident);
   const nav = ROLE_NAV[session.role];
+  const refresh = useOps((s) => s.refresh);
+  const liveAlert = useOps((s) => s.liveAlert);
+  const clearLiveAlert = useOps((s) => s.clearLiveAlert);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,9 +78,23 @@ export function AppShell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectIncident]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => void refresh(), 3000);
+    if ("Notification" in window && Notification.permission === "default") void Notification.requestPermission();
+    return () => window.clearInterval(timer);
+  }, [refresh]);
+
   return (
     <div className="min-h-dvh bg-navy text-ink">
       <LiveOps />
+      {liveAlert && (
+        <div className="sticky top-0 z-50 border-b border-alert/40 bg-alert/15 px-4 py-3 text-sm text-ink shadow-lg">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+            <div><strong>New emergency received:</strong> {liveAlert.type} at {liveAlert.location} <span className="ml-2 font-mono text-xs text-mute">{new Date(liveAlert.reportedAt).toLocaleString("en-UG", { timeZone: "Africa/Kampala" })}</span></div>
+            <button type="button" onClick={clearLiveAlert} className="rounded border border-line px-2 py-1 text-xs">Dismiss</button>
+          </div>
+        </div>
+      )}
       <div className="flag-stripe" />
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-panel-2/95 px-3 backdrop-blur-sm sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
