@@ -421,7 +421,8 @@ export function EmtRegistryView() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const msg = await add({
       name: String(fd.get("name") || ""),
       level: String(fd.get("level") || ""),
@@ -437,7 +438,7 @@ export function EmtRegistryView() {
       setOk(msg);
       setErr(null);
       toast.success(msg);
-      e.currentTarget.reset();
+      form.reset();
     }
   }
 
@@ -633,7 +634,8 @@ function LogCallForm() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const locName = String(fd.get("location") || "");
     const loc = LOCATIONS.find((l) => l.name === locName) || LOCATIONS[0];
     const from = String(fd.get("from") || "").trim() || "+256 772 000 000";
@@ -652,7 +654,7 @@ function LogCallForm() {
       phone: from,
     });
     toast.success(`${inc.id} logged from 919`);
-    e.currentTarget.reset();
+    form.reset();
     setOpen(false);
   }
 

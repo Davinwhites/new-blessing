@@ -447,63 +447,58 @@ export function HospitalsView() {
 }
 
 export function AdminAccountsView() {
-  const [accounts, setAccounts] = useState<{ username: string; displayName: string; role: string }[]>([]);
+  const [accounts, setAccounts] = useState<{ username: string; displayName: string; role: string; recoveryEmail: string; active: boolean }[]>([]);
   const saveOperator = useOps((s) => s.saveOperator);
+  const issueResetToken = useOps((s) => s.issueResetToken);
   const listOperators = useOps((s) => s.listOperators);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetToken, setResetToken] = useState<{ username: string; token: string; expiresAt: string } | null>(null);
 
-  async function refreshAccounts() {
-    setAccounts(await listOperators());
-  }
-
-  useEffect(() => {
-    void listOperators().then(setAccounts);
-  }, [listOperators]);
+  async function refreshAccounts() { setAccounts(await listOperators()); }
+  useEffect(() => { void listOperators().then(setAccounts); }, [listOperators]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await saveOperator({
-      username: String(form.get("username") || ""),
-      displayName: String(form.get("displayName") || ""),
-      role: String(form.get("role") || "ems") as never,
-      password: String(form.get("password") || "") || undefined,
+      username: String(form.get("username") || ""), displayName: String(form.get("displayName") || ""),
+      role: String(form.get("role") || "ems") as never, password: String(form.get("password") || "") || undefined,
+      recoveryEmail: String(form.get("recoveryEmail") || ""), active: form.get("active") === "on",
     });
-    if (result) {
-      setError(result);
-      setMessage(null);
-      return;
-    }
-    setError(null);
-    setMessage("Staff account saved securely.");
-    event.currentTarget.reset();
-    await refreshAccounts();
+    if (result) { setError(result); setMessage(null); return; }
+    setError(null); setMessage("Staff account saved. Changes are live immediately."); formElement.reset(); await refreshAccounts();
+  }
+
+  async function generateToken(username: string) {
+    const result = await issueResetToken(username);
+    if (typeof result === "string") { setError(result); setResetToken(null); return; }
+    setError(null); setResetToken({ username, ...result });
   }
 
   return (
     <div>
-      <PageHead title="Staff accounts" sub="Create responder access and rotate passwords without exposing credentials." />
+      <PageHead title="Staff accounts" sub="Create access for dispatch, EMS and EMT teams. Updates apply immediately." />
       <Card className="mb-4">
-        <CardTitle>Change or create credentials</CardTitle>
+        <CardTitle>Create or update credentials</CardTitle>
         {error && <Alert tone="crit">{error}</Alert>}
         {message && <Alert tone="ok">{message}</Alert>}
         <form onSubmit={submit} className="grid gap-3 md:grid-cols-2">
           <Field label="Username"><Input name="username" required placeholder="responder.namutebi" /></Field>
           <Field label="Display name"><Input name="displayName" required placeholder="Namutebi Response Team" /></Field>
-          <Field label="Console role">
-            <NativeSelect name="role" defaultValue="ems">
-              <option value="ems">EMS responder</option><option value="emt">EMT</option><option value="dispatcher">Dispatcher</option><option value="admin">Administrator</option>
-            </NativeSelect>
-          </Field>
-          <Field label="New password"><Input name="password" type="password" minLength={8} placeholder="Leave blank to keep current" /></Field>
+          <Field label="Recovery email"><Input name="recoveryEmail" type="email" required placeholder="name@example.org" /></Field>
+          <Field label="Console role"><NativeSelect name="role" defaultValue="ems"><option value="ems">EMS responder</option><option value="emt">EMT</option><option value="dispatcher">Dispatcher</option><option value="admin">Administrator</option></NativeSelect></Field>
+          <Field label="New password"><Input name="password" type="password" minLength={8} placeholder="Required for new accounts" /></Field>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-mute"><input name="active" type="checkbox" defaultChecked /> Account active</label>
           <div className="md:col-span-2"><Button type="submit">Save staff account</Button></div>
         </form>
       </Card>
-      <Card>
+      {resetToken && <Alert tone="ok"><div className="font-semibold">One-time reset token for {resetToken.username}</div><div className="mt-1 break-all font-mono text-xs">{resetToken.token}</div><div className="mt-1 text-xs">Copy and send it manually. Expires {new Date(resetToken.expiresAt).toLocaleString()}. It is shown only once; no email was sent.</div></Alert>}
+      <Card className="mt-4">
         <CardTitle>Registered staff <span className="font-mono text-[10.5px] font-normal text-mute">{accounts.length} accounts</span></CardTitle>
-        <DataTable headers={["Username", "Display name", "Role"]}>
-          {accounts.map((account) => <tr key={account.username}><Td mono>{account.username}</Td><Td>{account.displayName}</Td><Td className="text-amber">{account.role}</Td></tr>)}
+        <DataTable headers={["Username", "Recovery email", "Role", "Status", "Reset"]}>
+          {accounts.map((account) => <tr key={account.username}><Td mono>{account.username}</Td><Td>{account.recoveryEmail}</Td><Td className="text-amber">{account.role}</Td><Td>{account.active ? "Active" : "Inactive"}</Td><Td><Button type="button" variant="secondary" className="h-8 px-2 text-xs" onClick={() => void generateToken(account.username)}>Generate token</Button></Td></tr>)}
         </DataTable>
       </Card>
     </div>
