@@ -1,0 +1,229 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --color-navy: #0b1622;
+  --color-navy-2: #101f30;
+  --color-panel: #132436;
+  --color-panel-2: #0e1d2c;
+  --color-line: #22374c;
+  --color-line-strong: #314b66;
+  --color-alert: #e63946;
+  --color-alert-dim: #7a2530;
+  --color-amber: #e8b84a;
+  --color-ok: #3ddc84;
+  --color-mute: #8fa3b5;
+  --color-ink: #eaf1f7;
+  --color-wa-green: #075e54;
+  --color-wa-bubble: #dcf8c6;
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", ui-monospace, monospace;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --shadow-border: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-elevated: 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 24px 64px rgba(0, 0, 0, 0.45);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html,
+  body,
+  #app {
+    min-height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-navy);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--color-alert);
+    color: #fff;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-amber);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes pulse-live {
+  0% {
+    box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(61, 220, 132, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(61, 220, 132, 0);
+  }
+}
+
+@keyframes pulse-alert {
+  0% {
+    box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(230, 57, 70, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(230, 57, 70, 0);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pulse-dot {
+  animation: pulse-live 1.8s infinite;
+}
+
+.pulse-alert {
+  animation: pulse-alert 1.8s infinite;
+}
+
+.enter-up {
+  animation: fade-up 400ms var(--ease-out) both;
+}
+
+.data-table tbody tr {
+  transition: background-color 150ms var(--ease-out);
+}
+.data-table tbody tr:hover td {
+  background: color-mix(in oklab, var(--color-ink) 4%, transparent);
+}
+
+.flag-stripe {
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    #000 0 33.33%,
+    #fcdc04 33.33% 66.66%,
+    #d90000 66.66% 100%
+  );
+}
+
+.leaflet-container {
+  background: #0a1520;
+  font-family: var(--font-sans);
+  height: 100%;
+  width: 100%;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #132436;
+  color: #eaf1f7;
+  border: 1px solid #22374c;
+  box-shadow: none;
+  border-radius: 8px;
+}
+.leaflet-popup-content {
+  margin: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.leaflet-control-attribution {
+  background: rgba(11, 22, 34, 0.85) !important;
+  color: #8fa3b5;
+  font-size: 10px;
+}
+.leaflet-control-attribution a {
+  color: #eaf1f7;
+}
+.leaflet-bar a {
+  background: #132436;
+  color: #eaf1f7;
+  border-bottom-color: #22374c;
+}
+.leaflet-bar a:hover {
+  background: #0e1d2c;
+}
+.sl-pin {
+  background: transparent;
+  border: none;
+}
+.sl-pin-unit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.sl-pin-unit i {
+  display: block;
+  width: 11px;
+  height: 11px;
+  border-radius: 99px;
+  border: 1.5px solid #0b1622;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+.sl-pin-unit b {
+  color: #eaf1f7;
+  font: 600 10px/1 "IBM Plex Mono", ui-monospace, monospace;
+  text-shadow: 0 1px 2px #0b1622;
+}
+.sl-pin-hosp {
+  width: 16px;
+  height: 16px;
+  background: #0e1d2c;
+  border: 1px solid #8fa3b5;
+  display: grid;
+  place-items: center;
+  color: #8fa3b5;
+  font: 700 11px/1 sans-serif;
+}
+.sl-pin-inc {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+.sl-pin-inc i {
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+  background: #e63946;
+  box-shadow: 0 0 0 6px rgba(230, 57, 70, 0.28);
+  animation: pulse-alert 1.8s infinite;
+}
+.sl-pin-inc.is-selected i {
+  box-shadow: 0 0 0 8px rgba(232, 184, 74, 0.4);
+}

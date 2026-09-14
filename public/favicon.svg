@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="SafeLink Uganda">
+  <rect width="32" height="32" rx="7" fill="#0B1622"/>
+  <defs>
+    <clipPath id="tile"><rect width="32" height="32" rx="7"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="32" height="2" fill="#111111"/>
+    <rect y="2" width="32" height="2" fill="#FCDC04"/>
+    <rect y="4" width="32" height="2" fill="#D90000"/>
+  </g>
+  <path fill="#E63946" d="M16 8.2 25.6 12v7.4c0 6.2-4.6 9.8-9.6 11.6C11 29.2 6.4 25.6 6.4 19.4V12Z"/>
+  <path fill="#EAF1F7" d="M14.4 14.2h3.2v3.6h3.6v3.2h-3.6v3.6h-3.2v-3.6H10.8v-3.2h3.6z"/>
+</svg>
