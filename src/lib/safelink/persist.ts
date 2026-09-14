@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { getSql, type Sql } from "@/lib/db";
 import { DEFAULT_USER, OPERATOR_PASSWORD, ROLE_NAV } from "./constants";
 import {
@@ -38,10 +38,29 @@ const OPERATORS: { username: string; role: Role }[] = [
   { username: DEFAULT_USER.public, role: "public" },
 ];
 
-function hashPassword(username: string, password: string): string {
+function legacyHashPassword(username: string, password: string): string {
   return createHash("sha256")
     .update(`safelink|${username}|${password}`)
     .digest("hex");
+}
+
+function hashPassword(username: string, password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const derived = scryptSync(`${username}\0${password}`, salt, 64).toString("hex");
+  return `scrypt$${salt}$${derived}`;
+}
+
+function verifyPassword(username: string, password: string, stored: string): boolean {
+  if (stored.startsWith("scrypt$")) {
+    const [, salt, expectedHex] = stored.split("$");
+    if (!salt || !expectedHex) return false;
+    const actual = scryptSync(`${username}\0${password}`, salt, 64);
+    const expected = Buffer.from(expectedHex, "hex");
+    return expected.length === actual.length && timingSafeEqual(actual, expected);
+  }
+  const actual = Buffer.from(legacyHashPassword(username, password), "hex");
+  const expected = Buffer.from(stored, "hex");
+  return expected.length === actual.length && timingSafeEqual(actual, expected);
 }
 
 function parseJson<T>(value: unknown, fallback: T): T {
@@ -619,9 +638,8 @@ export async function loginOperator(input: {
   if (row.role !== input.role) {
     return { ok: false, error: `That account is a ${row.role} console, not ${input.role}.` };
   }
-  const expected = hashPassword(row.username, input.password);
-  if (expected !== row.password_hash) {
-    return { ok: false, error: "Incorrect password." };
+  if (!verifyPassword(row.username, input.password, row.password_hash)) {
+    return { ok: false, error: "Incorrect username or password." };
   }
   const snapshot = await loadSnapshot(true);
   return {
