@@ -7,7 +7,6 @@ import {
   Phone,
   Shield,
   Smartphone,
-  UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
@@ -24,7 +23,6 @@ const ROLES: { id: Role; icon: typeof Shield }[] = [
   { id: "dispatcher", icon: Headset },
   { id: "ems", icon: Ambulance },
   { id: "emt", icon: HeartPulse },
-  { id: "public", icon: UserRound },
 ];
 
 export function LoginScreen() {
@@ -112,7 +110,7 @@ export function LoginScreen() {
           <div className="flex flex-col justify-center px-6 py-8 md:px-9 md:py-10">
             <h2 className="m-0 text-lg font-semibold tracking-tight">Sign in to your console</h2>
             <p className="mt-1 mb-5 text-sm text-mute">
-              Choose your console. Operator password is {OPERATOR_PASSWORD}.
+              Authorized dispatch, EMS and administration staff only.
             </p>
             <div className="mb-5 flex flex-col gap-1.5">
               {ROLES.map(({ id, icon: Icon }) => (
