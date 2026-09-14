@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { MessageCircle, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -30,8 +29,6 @@ import {
 } from "./status";
 
 export function CallIntegrationView() {
-  const setUssdOpen = useOps((s) => s.setUssdOpen);
-  const setWaOpen = useOps((s) => s.setWaOpen);
   const calls = useOps((s) => s.calls);
   const incidents = useOps((s) => s.incidents);
   const smsLog = useOps((s) => s.smsLog);
@@ -109,15 +106,8 @@ CON What type of emergency?
 END Report received. Ref: INC-1050.
 Nearest ambulance notified.`}
           </pre>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button onClick={() => setUssdOpen(true)}>
-              <Smartphone className="size-4" />
-              Launch USSD simulator
-            </Button>
-            <Button variant="secondary" onClick={() => setWaOpen(true)}>
-              <MessageCircle className="size-4" />
-              Launch WhatsApp chatbot
-            </Button>
+          <div className="mt-3 rounded-lg border border-line bg-panel-2 p-3 text-xs leading-relaxed text-mute">
+            Live gateway traffic is shown below when the connected telecom and Meta providers deliver it. No simulated sessions are created in this app.
           </div>
         </Card>
         <div>
@@ -153,8 +143,7 @@ Nearest ambulance notified.`}
             <div className="max-h-[220px] overflow-y-auto">
               {channelCalls.length === 0 ? (
                 <p className="text-[13px] text-mute">
-                  No USSD, WhatsApp or voice sessions yet. Try the simulators
-                  above.
+                  No inbound USSD, WhatsApp, or voice sessions have been received yet.
                 </p>
               ) : (
                 channelCalls.slice(0, 20).map((c) => {

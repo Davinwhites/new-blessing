@@ -1,19 +1,17 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { getSql, type Sql } from "@/lib/db";
-import { DEFAULT_USER, OPERATOR_PASSWORD, ROLE_NAV } from "./constants";
+import { ROLE_NAV } from "./constants";
 import {
   assignUnit,
   autoDispatch,
   buildIncident,
   linkHospital,
-  matchLocation,
   nearestAvailable,
   releaseHospital,
   moveUnitsTowardIncidents,
 } from "./engine";
 import { haversineKm, nowStr } from "./geo";
-import { INITIAL_EMTS, INITIAL_HOSPITALS, INITIAL_UNITS, LOCATIONS } from "./seed";
-import { SIM_SCENARIOS } from "./scenarios";
+import { LOCATIONS } from "./seed";
 import type {
   CallRecord,
   Emt,
@@ -29,14 +27,6 @@ import type {
 } from "./types";
 
 type Mutable = OpsSnapshot;
-
-const OPERATORS: { username: string; role: Role }[] = [
-  { username: DEFAULT_USER.admin, role: "admin" },
-  { username: DEFAULT_USER.dispatcher, role: "dispatcher" },
-  { username: DEFAULT_USER.ems, role: "ems" },
-  { username: DEFAULT_USER.emt, role: "emt" },
-  { username: DEFAULT_USER.public, role: "public" },
-];
 
 function legacyHashPassword(username: string, password: string): string {
   return createHash("sha256")
@@ -97,149 +87,10 @@ async function metaSet(sql: Sql, key: string, value: string): Promise<void> {
 }
 
 export async function ensureSeeded(): Promise<void> {
-  const sql = await getSql();
-  const [{ n }] = await sql.query<{ n: number }>(
-    "select count(*)::int as n from sl_units",
-  );
-  if (n > 0) return;
-
-  for (const op of OPERATORS) {
-    await sql.query(
-      `insert into sl_operators (username, display_name, role, password_hash)
-       values ($1, $2, $3, $4)
-       on conflict (username) do nothing`,
-      [op.username, op.username, op.role, hashPassword(op.username, OPERATOR_PASSWORD)],
-    );
-  }
-
-  const units: Unit[] = INITIAL_UNITS.map((u) => ({ ...u }));
-  const hospitals: Hospital[] = INITIAL_HOSPITALS.map((h) => ({ ...h }));
-  const incidents: Incident[] = [];
-  const calls: CallRecord[] = [];
-  const sms: SmsMessage[] = [];
-  let incidentSeq = 1000;
-  let smsSeq = 0;
-
-  for (const sc of SIM_SCENARIOS.slice(0, 5)) {
-    incidentSeq += 1;
-    const loc = matchLocation(sc.locationHint);
-    const source =
-      sc.channel === "Voice"
-        ? "Voice 919"
-        : sc.channel === "USSD"
-          ? "USSD *919#"
-          : sc.channel === "WhatsApp"
-            ? "WhatsApp +256 919 000 001"
-            : "Public app report";
-    const inc = buildIncident(
-      {
-        type: sc.type,
-        location: loc.name,
-        region: loc.region,
-        country: "Uganda",
-        lat: loc.lat,
-        lng: loc.lng,
-        casualties: sc.casualties,
-        desc: sc.desc,
-        source,
-        reporter: sc.reporter,
-        channel: sc.channel,
-        from: sc.reporter,
-      },
-      "INC-" + incidentSeq,
-    );
-    autoDispatch(inc, units, hospitals);
-    incidents.push(inc);
-    calls.push({
-      id: "CALL-" + inc.id,
-      channel: sc.channel,
-      from: sc.reporter,
-      incidentId: inc.id,
-      verified: sc.channel === "Voice",
-      time: nowStr(),
-    });
-    smsSeq += 1;
-    const etaMsg = inc.assigned.length
-      ? `${inc.assigned.length} unit(s) dispatched, nearest ETA ${inc.assigned[0].eta} min.`
-      : "Searching for the nearest available unit.";
-    sms.push({
-      id: "SMS-" + smsSeq,
-      phone: "+256 772 000 000",
-      text: `SafeLink Uganda: Report received. Ref ${inc.id}. ${etaMsg}`,
-      time: nowStr(),
-    });
-  }
-
-  for (const u of units) {
-    await sql.query(
-      `insert into sl_units
-        (id, type, agency, country, region, zone, lat, lng, status, capacity, phone, assigned_incident)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       on conflict (id) do nothing`,
-      [
-        u.id,
-        u.type,
-        u.agency,
-        u.country,
-        u.region,
-        u.zone,
-        u.lat,
-        u.lng,
-        u.status,
-        u.capacity,
-        u.phone,
-        u.assignedIncident,
-      ],
-    );
-  }
-
-  for (const h of hospitals) {
-    await sql.query(
-      `insert into sl_hospitals
-        (id, name, country, tier, ownership, region, zone, lat, lng,
-         beds_total, beds_available, trauma_total, trauma_available, phone)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-       on conflict (id) do nothing`,
-      [
-        h.id,
-        h.name,
-        h.country,
-        h.tier,
-        h.ownership,
-        h.region,
-        h.zone,
-        h.lat,
-        h.lng,
-        h.bedsTotal,
-        h.bedsAvailable,
-        h.traumaTotal,
-        h.traumaAvailable,
-        h.phone,
-      ],
-    );
-  }
-
-  for (const e of INITIAL_EMTS) {
-    await sql.query(
-      `insert into sl_emts
-        (id, name, level, cert_body, agency, region, phone, status)
-       values ($1,$2,$3,$4,$5,$6,$7,$8)
-       on conflict (id) do nothing`,
-      [e.id, e.name, e.level, e.certBody, e.agency, e.region, e.phone, e.status],
-    );
-  }
-
-  for (const inc of incidents) await saveIncident(sql, inc);
-  for (const c of calls) await saveCall(sql, c);
-  for (const m of sms) await saveSms(sql, m);
-
-  await metaSet(sql, "incident_seq", String(incidentSeq));
-  await metaSet(sql, "unit_seq", "40");
-  await metaSet(sql, "hospital_seq", "27");
-  await metaSet(sql, "emt_seq", String(INITIAL_EMTS.length));
-  await metaSet(sql, "sms_seq", String(smsSeq));
-  await metaSet(sql, "outbound_seq", "0");
-  await metaSet(sql, "last_tick", String(Date.now()));
+  // Production data is provisioned by the connected backend. Never create
+  // operators, responders, hospitals, units, incidents, or sample messages
+  // implicitly at runtime.
+  await getSql();
 }
 
 async function loadMutable(): Promise<Mutable> {
