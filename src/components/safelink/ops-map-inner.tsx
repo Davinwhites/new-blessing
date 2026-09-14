@@ -125,6 +125,38 @@ function GoogleMap({ hospitals, units, incidents, selectedId, onSelect, onFallba
   return <div className="h-full w-full" ref={elementRef} aria-label="Live Google map" />;
 }
 
+function GoogleMapSources({ selected }: { selected?: Incident }) {
+  const location = selected ? `${selected.lat},${selected.lng}` : "1.3733,32.2903";
+  const sources = [
+    ["Hospitals", `https://www.google.com/maps/search/${selected ? `hospitals+near+${encodeURIComponent(selected.location)}` : "hospitals+in+Uganda"}/@${location},12z`],
+    ["Health centres", `https://www.google.com/maps/search/${selected ? `health+centres+near+${encodeURIComponent(selected.location)}` : "health+centres+in+Uganda"}/@${location},12z`],
+    ["Uganda overview", "https://www.google.com/maps/@1.3733,32.2903,7z"],
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
+      <span className="mr-1 text-xs font-medium text-mute">Google Maps sources{selected ? ` · ${selected.location}` : ""}</span>
+      {sources.map(([label, href]) => (
+        <a key={href} href={href} target="_blank" rel="noreferrer" className="rounded-md border border-line bg-panel px-2.5 py-1.5 text-xs text-ink transition-colors hover:border-accent hover:text-accent">
+          {label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function MapLegend({ provider }: { provider: string }) {
+  return (
+    <div className="flex flex-wrap gap-4 border-t border-line px-3 py-2.5 text-xs text-mute">
+      <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-ok" />Available unit</span>
+      <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-amber" />Unit en route</span>
+      <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-alert" />On scene / incident</span>
+      <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 bg-mute" />Hospital</span>
+      <span className="ml-auto font-mono text-[0.625rem] uppercase tracking-[0.12em]">{provider} · live positions</span>
+    </div>
+  );
+}
+
 function LeafletMap({
   hospitals,
   units,
@@ -145,6 +177,7 @@ function LeafletMap({
 
   return (
     <div className="overflow-hidden rounded-lg bg-panel-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
+      <GoogleMapSources selected={selected} />
       <div className="h-[min(56vh,440px)] min-h-[280px] w-full">
         <MapContainer
           center={UGANDA_CENTER}
@@ -219,27 +252,7 @@ function LeafletMap({
           ))}
         </MapContainer>
       </div>
-      <div className="flex flex-wrap gap-4 border-t border-line px-3 py-2.5 text-xs text-mute">
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-full bg-ok" />
-          Available unit
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-full bg-amber" />
-          Unit en route
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-full bg-alert" />
-          On scene / incident
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-2.5 bg-mute" />
-          Hospital
-        </span>
-        <span className="ml-auto font-mono text-[0.625rem] uppercase tracking-[0.12em]">
-            OpenStreetMap · live positions
-          </span>
-        </div>
+      <MapLegend provider="OpenStreetMap" />
     </div>
   );
 }
@@ -248,7 +261,8 @@ export function OpsMapInner(props: Parameters<typeof LeafletMap>[0]) {
   const [useFallback, setUseFallback] = useState(!import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
   if (apiKey && !useFallback) {
-    return <div className="overflow-hidden rounded-lg bg-panel-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"><div className="h-[min(56vh,440px)] min-h-[280px] w-full"><GoogleMap {...props} onFallback={() => setUseFallback(true)} /></div><div className="border-t border-line px-3 py-2.5 text-xs text-mute"><span className="font-mono text-[0.625rem] uppercase tracking-[0.12em]">Google Maps · live positions</span></div></div>;
+    const selected = props.incidents.find((incident) => incident.id === props.selectedId);
+    return <div className="overflow-hidden rounded-lg bg-panel-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"><GoogleMapSources selected={selected} /><div className="h-[min(56vh,440px)] min-h-[280px] w-full"><GoogleMap {...props} onFallback={() => setUseFallback(true)} /></div><MapLegend provider="Google Maps" /></div>;
   }
   return <LeafletMap {...props} />;
 }
