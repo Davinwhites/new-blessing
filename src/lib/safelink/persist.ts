@@ -102,6 +102,7 @@ export async function ensureSeeded(): Promise<void> {
   await sql.query("alter table sl_hospitals add column if not exists source_url text not null default ''");
   await sql.query("alter table sl_hospitals add column if not exists verification_status text not null default 'needs_verification'");
   await sql.query("alter table sl_hospitals add column if not exists last_verified_at timestamptz");
+  await sql.query("alter table sl_incidents add column if not exists district text not null default ''");
 }
 
 async function loadMutable(): Promise<Mutable> {
@@ -201,9 +202,10 @@ function rowToIncident(r: Record<string, unknown>): Incident {
     id: String(r.id),
     type: String(r.type),
     location: String(r.location),
-    region: String(r.region),
-    country: String(r.country),
-    lat: asNumber(r.lat),
+  region: String(r.region),
+  district: String(r.district || ""),
+  country: String(r.country),
+  lat: asNumber(r.lat),
     lng: asNumber(r.lng),
     casualties: asNumber(r.casualties),
     desc: String(r.description),
@@ -342,9 +344,9 @@ async function saveEmt(sql: Sql, e: Emt): Promise<void> {
 async function saveIncident(sql: Sql, i: Incident): Promise<void> {
   await sql.query(
     `insert into sl_incidents
-      (id, type, location, region, country, lat, lng, casualties, description,
+      (id, type, location, region, district, country, lat, lng, casualties, description,
        source, reporter, status, time_label, reported_at, assigned, log, hospital_link)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb,$17::jsonb)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17::jsonb,$18::jsonb)
      on conflict (id) do update set
        type = excluded.type,
        location = excluded.location,
@@ -357,6 +359,7 @@ async function saveIncident(sql: Sql, i: Incident): Promise<void> {
        source = excluded.source,
        reporter = excluded.reporter,
        status = excluded.status,
+       district = excluded.district,
        time_label = excluded.time_label,
        reported_at = excluded.reported_at,
        assigned = excluded.assigned,
@@ -367,6 +370,7 @@ async function saveIncident(sql: Sql, i: Incident): Promise<void> {
       i.type,
       i.location,
       i.region,
+      i.district || "",
       i.country,
       i.lat,
       i.lng,

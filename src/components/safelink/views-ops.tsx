@@ -277,6 +277,9 @@ export function PublicReportView() {
                 ))}
               </NativeSelect>
             </Field>
+            <Field label="District or locality">
+              <Input name="district" required placeholder="e.g. Kampala, Wakiso, Jinja" />
+            </Field>
             <Field label="Estimated casualties">
               <Input name="casualties" defaultValue="1" />
             </Field>

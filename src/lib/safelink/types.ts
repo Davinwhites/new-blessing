@@ -87,6 +87,7 @@ export interface Incident {
   type: string;
   location: string;
   region: string;
+  district?: string;
   country: string;
   lat: number;
   lng: number;
@@ -131,6 +132,7 @@ export interface ReportInput {
   type: string;
   location: string;
   region?: string;
+  district?: string;
   country?: string;
   lat: number;
   lng: number;
