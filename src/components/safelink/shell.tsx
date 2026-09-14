@@ -22,6 +22,7 @@ import { useOps } from "@/lib/safelink/store";
 import { cn } from "@/lib/utils";
 import { KampalaClock } from "./clock";
 import { IncidentPanel } from "./incident-panel";
+import { InstallAppPrompt } from "./install-app";
 import { LiveOps } from "./live-ops";
 import { Wordmark } from "./mark";
 import {
@@ -186,6 +187,7 @@ export function AppShell() {
         </main>
       </div>
       <IncidentPanel />
+      <InstallAppPrompt />
     </div>
   );
 }
