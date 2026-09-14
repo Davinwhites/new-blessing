@@ -512,10 +512,17 @@ export function NationalDirectoryView() {
   const normalized = query.trim().toLowerCase();
   const filteredUnits = units.filter((u) => [u.agency, u.region, u.zone, u.phone, u.id].some((value) => value.toLowerCase().includes(normalized)));
   const contacts = [
-    { name: "Uganda Ministry of Health", phone: "0800-100-066", area: "National", source: "Ministry of Health public contact" },
-    { name: "Uganda Police emergency", phone: "999", area: "National", source: "Uganda Police public emergency number" },
-    { name: "City Ambulance", phone: "0800-111044", area: "National", source: "Publicly listed provider; verify before operational use" },
-    { name: "St John Ambulance Uganda", phone: "+256 414 230671", area: "Kampala", source: "Publicly listed provider; verify before operational use" },
+    { name: "Uganda Ministry of Health", phone: "0800-100-066", area: "National", source: "Official public contact; verify before operational use" },
+    { name: "Uganda Police emergency", phone: "999", area: "National", source: "Public emergency number; verify before operational use" },
+    { name: "National Health Facility Registry", phone: "", area: "National", source: "Official facility registry: nhfr.health.go.ug" },
+    { name: "Mulago National Referral Hospital — Medical Emergency", phone: "+256 414 675065", area: "Kampala", source: "Public hospital listing; verify before operational use" },
+    { name: "Mulago National Referral Hospital — Acute Care Unit", phone: "+256 414 675066", area: "Kampala", source: "Public hospital listing; verify before operational use" },
+    { name: "Jinja Regional Referral Hospital — Accident & Emergency", phone: "+256 414 674584", area: "Jinja", source: "Public hospital listing; verify before operational use" },
+    { name: "Jinja Regional Referral Hospital — Ambulance", phone: "+256 414 674585", area: "Jinja", source: "Public hospital listing; verify before operational use" },
+    { name: "Case Medical Centre", phone: "+256 414 250362", area: "Kampala", source: "Public provider listing; verify before operational use" },
+    { name: "International Medical Group", phone: "+256 312 200400", area: "Uganda", source: "Public provider listing; verify before operational use" },
+    { name: "City Ambulance", phone: "0800-111044", area: "Uganda", source: "Public provider listing; verify before operational use" },
+    { name: "St John Ambulance Uganda", phone: "+256 414 230671", area: "Kampala", source: "Public provider listing; verify before operational use" },
   ];
   return (
     <div>
