@@ -20,14 +20,43 @@
  * `process.env`, which is why the merge has to happen before Vite starts.
  */
 import { spawn } from "node:child_process";
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { constants as osConstants } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const APP_ENV_REL_PATH = ".grok/app-env.json";
+const PROJECT_ENV_PATH = "/vercel/share/.env.project";
+const LOCAL_ENV_NAME = ".env.development.local";
 
 const VITE_PREFIX = "VITE_";
+
+/** Load server-side project variables before Vite's SSR bootstrap runs. */
+export function parseDotEnv(text) {
+  const env = {};
+  for (const line of text.split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+    let value = match[2];
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    env[match[1]] = value;
+  }
+  return env;
+}
+
+export function readProjectEnv(root) {
+  const paths = [PROJECT_ENV_PATH, join(root, LOCAL_ENV_NAME)];
+  return paths.reduce((env, path) => {
+    if (!existsSync(path)) return env;
+    try {
+      return { ...env, ...parseDotEnv(readFileSync(path, "utf8")) };
+    } catch {
+      return env;
+    }
+  }, {});
+}
 
 /**
  * Parse an app-env document, keeping only `VITE_`-prefixed string entries.
@@ -110,7 +139,10 @@ function main(argv) {
     console.error("usage: node scripts/with-app-env.mjs <command> [args…]");
     process.exit(2);
   }
-  const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
+  const env = {
+    ...readProjectEnv(projectRoot()),
+    ...mergeAppEnv(readAppEnv(projectRoot()), process.env),
+  };
   const child = spawn(command, args, { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
