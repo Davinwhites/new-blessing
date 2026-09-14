@@ -26,6 +26,7 @@ import { LiveOps } from "./live-ops";
 import { Wordmark } from "./mark";
 import {
   AdminOverview,
+  AdminAccountsView,
   AnalyticsView,
   FleetView,
   HospitalsView,
@@ -146,6 +147,7 @@ export function AppShell() {
           {viewId === "admin-fleet" && <FleetView />}
           {viewId === "admin-hospitals" && <HospitalsView />}
           {viewId === "admin-analytics" && <AnalyticsView />}
+          {viewId === "admin-accounts" && <AdminAccountsView />}
           {viewId === "callintegration" && <CallIntegrationView />}
           {viewId === "public-report" && <PublicReportView />}
           {viewId === "emt-assignments" && <EmtAssignmentsView />}

@@ -48,6 +48,18 @@ export const loginOperatorFn = createServerFn({ method: "POST" })
     return loginOperator(data);
   });
 
+export const listOperatorsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { listOperatorsDb } = await import("./persist");
+  return listOperatorsDb();
+});
+
+export const saveOperatorFn = createServerFn({ method: "POST" })
+  .validator(z.object({ username: z.string(), displayName: z.string(), role: roleSchema, password: z.string().optional() }))
+  .handler(async ({ data }) => {
+    const { saveOperatorDb } = await import("./persist");
+    return saveOperatorDb(data);
+  });
+
 export const fileReportFn = createServerFn({ method: "POST" })
   .validator(reportInput)
   .handler(async ({ data }) => {

@@ -651,6 +651,41 @@ export async function loginOperator(input: {
   };
 }
 
+export async function listOperatorsDb(): Promise<{ username: string; displayName: string; role: Role }[]> {
+  await ensureSeeded();
+  const sql = await getSql();
+  const rows = await sql.query<{ username: string; display_name: string; role: Role }>(
+    "select username, display_name, role from sl_operators order by username",
+  );
+  return rows.map((row) => ({ username: row.username, displayName: row.display_name, role: row.role }));
+}
+
+export async function saveOperatorDb(input: {
+  username: string;
+  displayName: string;
+  role: Role;
+  password?: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  await ensureSeeded();
+  const username = input.username.trim();
+  const displayName = input.displayName.trim() || username;
+  if (!/^[a-z0-9._-]{3,40}$/i.test(username)) return { ok: false, error: "Use 3–40 letters, numbers, dots, dashes, or underscores." };
+  if (input.password !== undefined && input.password.length < 8) return { ok: false, error: "Passwords must be at least 8 characters." };
+  const sql = await getSql();
+  const existing = await sql.query<{ username: string }>("select username from sl_operators where username = $1", [username]);
+  if (!existing[0] && !input.password) return { ok: false, error: "A password is required for a new responder." };
+  if (existing[0]) {
+    if (input.password) {
+      await sql.query("update sl_operators set display_name = $2, role = $3, password_hash = $4 where username = $1", [username, displayName, input.role, hashPassword(username, input.password)]);
+    } else {
+      await sql.query("update sl_operators set display_name = $2, role = $3 where username = $1", [username, displayName, input.role]);
+    }
+  } else {
+    await sql.query("insert into sl_operators (username, display_name, role, password_hash) values ($1,$2,$3,$4)", [username, displayName, input.role, hashPassword(username, input.password as string)]);
+  }
+  return { ok: true };
+}
+
 export async function fileReportDb(
   input: ReportInput,
 ): Promise<{ incident: Incident; snapshot: OpsSnapshot }> {
