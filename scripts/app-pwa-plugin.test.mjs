@@ -16,8 +16,8 @@ import {
   resolveOgCardAsset,
   snapshotOgIdentity,
   stripInstallParams,
-} from "./grok-pwa-shared.mjs";
-import { renderInstallPage } from "./grok-pwa-plugin.mjs";
+} from "./app-pwa-shared.mjs";
+import { renderInstallPage } from "./app-pwa-plugin.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -439,7 +439,7 @@ test("filters non-document paths", () => {
   assert.equal(isDocumentPath("/"), true);
   assert.equal(isDocumentPath("/app"), true);
   assert.equal(isDocumentPath("/api/thing"), false);
-  assert.equal(isDocumentPath("/__grok/install/styles.css"), false);
+  assert.equal(isDocumentPath("/__app/install/styles.css"), false);
   assert.equal(isDocumentPath("/logo.png"), false);
 });
 
@@ -477,7 +477,7 @@ test("renders the manifest with the per-app name", () => {
   const manifest = JSON.parse(renderWebManifest("wild-race.grok.me"));
   assert.equal(manifest.name, "Wild Race");
   assert.equal(manifest.short_name, "Wild Race");
-  assert.equal(manifest.icons[0].src, "/__grok/icon-180.png");
+  assert.equal(manifest.icons[0].src, "/__app/icon-180.png");
 });
 
 // Tripwires: the deployed-app path only works if Nitro scans server/ — an
@@ -490,17 +490,17 @@ test("vite config keeps the nitro serverDir wiring", () => {
 });
 
 test("nitro middleware and its bundled assets exist", () => {
-  const middleware = readFileSync(join(TEMPLATE_ROOT, "server/middleware/grok-pwa.ts"), "utf8");
+  const middleware = readFileSync(join(TEMPLATE_ROOT, "server/middleware/app-pwa.ts"), "utf8");
   assert.match(middleware, /install-page\.html\?raw/);
-  assert.match(middleware, /virtual:grok-og-identity/);
+  assert.match(middleware, /virtual:app-og-identity/);
   readFileSync(join(TEMPLATE_ROOT, "scripts/install-page.html"));
-  readFileSync(join(TEMPLATE_ROOT, "public/__grok/icon-180.png"));
-  readFileSync(join(TEMPLATE_ROOT, "public/__grok/install/styles.css"));
+  readFileSync(join(TEMPLATE_ROOT, "public/__app/icon-180.png"));
+  readFileSync(join(TEMPLATE_ROOT, "public/__app/install/styles.css"));
 });
 
 test("vite plugin bakes og identity as a virtual module", () => {
-  const plugin = readFileSync(join(TEMPLATE_ROOT, "scripts/grok-pwa-plugin.mjs"), "utf8");
-  assert.match(plugin, /virtual:grok-og-identity/);
+  const plugin = readFileSync(join(TEMPLATE_ROOT, "scripts/app-pwa-plugin.mjs"), "utf8");
+  assert.match(plugin, /virtual:app-og-identity/);
   assert.match(plugin, /snapshotOgIdentity/);
 });
 
