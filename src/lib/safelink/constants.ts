@@ -75,10 +75,10 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   ],
 };
 
-export const OPERATOR_PASSWORD = "SafeLink.919";
+export const OPERATOR_PASSWORD = "1234";
 
 export const DEFAULT_USER: Record<Role, string> = {
-  admin: "admin.kampala",
+  admin: "admin",
   public: "citizen.elisha",
   emt: "emt.namutebi",
   ems: "ambulance.amb01",
