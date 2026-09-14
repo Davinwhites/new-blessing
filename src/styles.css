@@ -147,6 +147,24 @@
   font-family: var(--font-sans);
   height: 100%;
   width: 100%;
+  min-height: 280px;
+  transition: opacity 220ms var(--ease-out);
+}
+
+@media (max-width: 640px) {
+  .leaflet-control-zoom {
+    margin-right: 8px !important;
+    margin-bottom: 8px !important;
+  }
+  .leaflet-control-attribution {
+    max-width: calc(100vw - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .leaflet-popup-content {
+    max-width: min(240px, calc(100vw - 64px));
+  }
 }
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
