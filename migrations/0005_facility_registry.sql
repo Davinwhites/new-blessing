@@ -1,0 +1,9 @@
+alter table sl_hospitals add column if not exists facility_type text not null default 'Hospital';
+alter table sl_hospitals add column if not exists district text not null default '';
+alter table sl_hospitals add column if not exists subcounty text not null default '';
+alter table sl_hospitals add column if not exists source_url text not null default '';
+alter table sl_hospitals add column if not exists verification_status text not null default 'needs_verification';
+alter table sl_hospitals add column if not exists last_verified_at timestamptz;
+create index if not exists sl_hospitals_region_idx on sl_hospitals (region);
+create index if not exists sl_hospitals_district_idx on sl_hospitals (district);
+create index if not exists sl_hospitals_facility_type_idx on sl_hospitals (facility_type);

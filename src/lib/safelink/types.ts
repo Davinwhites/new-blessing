@@ -38,9 +38,15 @@ export interface Hospital {
   name: string;
   country: string;
   tier: string;
+  facilityType?: string;
   ownership: string;
   region: string;
   zone: string;
+  district?: string;
+  subcounty?: string;
+  sourceUrl?: string;
+  verificationStatus?: "official" | "needs_verification";
+  lastVerifiedAt?: string | null;
   lat: number;
   lng: number;
   bedsTotal: number;

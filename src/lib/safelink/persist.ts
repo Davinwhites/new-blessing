@@ -96,6 +96,12 @@ export async function ensureSeeded(): Promise<void> {
   await sql.query("alter table sl_operators add column if not exists reset_token_expires_at timestamptz");
   await sql.query("alter table sl_operators add column if not exists active boolean not null default true");
   await sql.query("alter table sl_operators add column if not exists updated_at timestamptz not null default now()");
+  await sql.query("alter table sl_hospitals add column if not exists facility_type text not null default 'Hospital'");
+  await sql.query("alter table sl_hospitals add column if not exists district text not null default ''");
+  await sql.query("alter table sl_hospitals add column if not exists subcounty text not null default ''");
+  await sql.query("alter table sl_hospitals add column if not exists source_url text not null default ''");
+  await sql.query("alter table sl_hospitals add column if not exists verification_status text not null default 'needs_verification'");
+  await sql.query("alter table sl_hospitals add column if not exists last_verified_at timestamptz");
 }
 
 async function loadMutable(): Promise<Mutable> {
@@ -158,9 +164,15 @@ function rowToHospital(r: Record<string, unknown>): Hospital {
     name: String(r.name),
     country: String(r.country),
     tier: String(r.tier),
+    facilityType: String(r.facility_type || r.tier || "Hospital"),
     ownership: String(r.ownership),
     region: String(r.region),
     zone: String(r.zone),
+    district: String(r.district || r.zone || ""),
+    subcounty: String(r.subcounty || ""),
+    sourceUrl: String(r.source_url || ""),
+    verificationStatus: r.verification_status === "official" ? "official" : "needs_verification",
+    lastVerifiedAt: r.last_verified_at ? new Date(String(r.last_verified_at)).toISOString() : null,
     lat: asNumber(r.lat),
     lng: asNumber(r.lng),
     bedsTotal: asNumber(r.beds_total),

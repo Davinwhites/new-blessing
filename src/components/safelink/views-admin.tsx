@@ -523,7 +523,16 @@ export function NationalDirectoryView() {
   const units = useOps((s) => s.units).filter((u) => u.type === "Ambulance");
   const hospitals = useOps((s) => s.hospitals);
   const [query, setQuery] = useState("");
+  const [facilityType, setFacilityType] = useState("all");
+  const [region, setRegion] = useState("all");
   const normalized = query.trim().toLowerCase();
+  const facilityTypes = Array.from(new Set(hospitals.map((hospital) => hospital.facilityType ?? "Hospital"))).sort();
+  const regions = Array.from(new Set(hospitals.map((hospital) => hospital.region))).sort();
+  const filteredHospitals = hospitals.filter((hospital) =>
+    (facilityType === "all" || (hospital.facilityType ?? "Hospital") === facilityType) &&
+    (region === "all" || hospital.region === region) &&
+    [hospital.name, hospital.facilityType ?? "Hospital", hospital.region, hospital.zone, hospital.district ?? "", hospital.subcounty ?? "", hospital.phone].some((value) => value.toLowerCase().includes(normalized)),
+  );
   const filteredUnits = units.filter((u) => [u.agency, u.region, u.zone, u.phone, u.id].some((value) => value.toLowerCase().includes(normalized)));
   const contacts = [
     { name: "Uganda Ministry of Health", phone: "0800-100-066", area: "National", source: "Official public contact; verify before operational use" },
@@ -555,9 +564,14 @@ export function NationalDirectoryView() {
         </DataTable>
       </Card>
       <Card>
-        <CardTitle>Hospitals and referral points <span className="font-mono text-[10.5px] font-normal text-mute">{hospitals.length} records</span></CardTitle>
-        <DataTable headers={["Hospital", "District / region", "Contact", "Beds available", "Trauma available"]}>
-          {hospitals.map((hospital) => <tr key={hospital.id}><Td>{hospital.name}</Td><Td>{hospital.region} · {hospital.zone}</Td><Td mono>{hospital.phone || "Not published"}</Td><Td>{hospital.bedsAvailable}/{hospital.bedsTotal}</Td><Td>{hospital.traumaAvailable}/{hospital.traumaTotal}</Td></tr>)}
+        <CardTitle>Uganda health facilities <span className="font-mono text-[10.5px] font-normal text-mute">{filteredHospitals.length} of {hospitals.length} records</span></CardTitle>
+        <div className="mb-3 grid gap-2 md:grid-cols-[1fr_180px_180px]">
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search facility, district, subcounty, or contact" />
+          <NativeSelect value={facilityType} onChange={(event) => setFacilityType(event.target.value)}><option value="all">All facility types</option>{facilityTypes.map((type) => <option key={type} value={type}>{type}</option>)}</NativeSelect>
+          <NativeSelect value={region} onChange={(event) => setRegion(event.target.value)}><option value="all">All regions</option>{regions.map((item) => <option key={item} value={item}>{item}</option>)}</NativeSelect>
+        </div>
+        <DataTable headers={["Facility", "Type / ownership", "District / region", "Contact", "Source"]}>
+          {filteredHospitals.length === 0 ? <EmptyRow cols={5}>No facility records match these filters. Import the official National Health Facility Registry to populate the directory.</EmptyRow> : filteredHospitals.map((hospital) => <tr key={hospital.id}><Td><div>{hospital.name}</div><div className="font-mono text-[10px] text-mute">{hospital.subcounty || "Subcounty not recorded"}</div></Td><Td><div>{hospital.facilityType ?? "Hospital"}</div><div className="text-xs text-mute">{hospital.ownership}</div></Td><Td>{hospital.district || hospital.zone} · {hospital.region}</Td><Td mono>{hospital.phone || "Not published"}</Td><Td><span className={hospital.verificationStatus === "official" ? "text-green-700" : "text-amber"}>{hospital.verificationStatus === "official" ? "Official registry" : "Needs verification"}</span></Td></tr>)}
         </DataTable>
       </Card>
     </div>
