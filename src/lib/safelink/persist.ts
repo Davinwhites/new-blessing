@@ -28,7 +28,7 @@ import type {
   UnitType,
 } from "./types";
 
-interface Mutable extends OpsSnapshot {}
+type Mutable = OpsSnapshot;
 
 const OPERATORS: { username: string; role: Role }[] = [
   { username: DEFAULT_USER.admin, role: "admin" },
