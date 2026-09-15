@@ -54,6 +54,10 @@ export interface Hospital {
   traumaTotal: number;
   traumaAvailable: number;
   phone: string;
+  services?: string;
+  address?: string;
+  operatingHours?: string;
+  whatsapp?: string;
 }
 
 export interface Emt {

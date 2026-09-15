@@ -102,6 +102,10 @@ export async function ensureSeeded(): Promise<void> {
   await sql.query("alter table sl_hospitals add column if not exists source_url text not null default ''");
   await sql.query("alter table sl_hospitals add column if not exists verification_status text not null default 'needs_verification'");
   await sql.query("alter table sl_hospitals add column if not exists last_verified_at timestamptz");
+  await sql.query("alter table sl_hospitals add column if not exists services text not null default ''");
+  await sql.query("alter table sl_hospitals add column if not exists address text not null default ''");
+  await sql.query("alter table sl_hospitals add column if not exists operating_hours text not null default 'Open 24 hours'");
+  await sql.query("alter table sl_hospitals add column if not exists whatsapp text not null default ''");
   await sql.query("alter table sl_incidents add column if not exists district text not null default ''");
 }
 
@@ -181,6 +185,10 @@ function rowToHospital(r: Record<string, unknown>): Hospital {
     traumaTotal: asNumber(r.trauma_total),
     traumaAvailable: asNumber(r.trauma_available),
     phone: String(r.phone),
+    services: String(r.services || ""),
+    address: String(r.address || ""),
+    operatingHours: String(r.operating_hours || "Open 24 hours"),
+    whatsapp: String(r.whatsapp || ""),
   };
 }
 
