@@ -5,7 +5,15 @@ import { matchLocation } from "@/lib/safelink/engine";
 import { useOps } from "@/lib/safelink/store";
 import { Mark } from "./mark";
 
-type Step = "root" | "type" | "location" | "casualties" | "statusRef";
+type Step =
+  | "root"
+  | "type"
+  | "location"
+  | "casualties"
+  | "details"
+  | "caller"
+  | "phone"
+  | "statusRef";
 type Bubble = { who: "bot" | "user"; text: string };
 
 const ROOT_QUICK = [
@@ -22,6 +30,10 @@ export function WhatsAppOverlay() {
   const [step, setStep] = useState<Step>("root");
   const [type, setType] = useState<string | null>(null);
   const [location, setLocation] = useState<string | null>(null);
+  const [casualties, setCasualties] = useState<number>(1);
+  const [details, setDetails] = useState<string | null>(null);
+  const [caller, setCaller] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [quick, setQuick] = useState<string[]>(ROOT_QUICK);
   const [value, setValue] = useState("");
@@ -38,6 +50,10 @@ export function WhatsAppOverlay() {
     setStep("root");
     setType(null);
     setLocation(null);
+    setCasualties(1);
+    setDetails(null);
+    setCaller(null);
+    setPhone(null);
     setMessages([]);
     setQuick(ROOT_QUICK);
     setTimeout(() => {
@@ -125,7 +141,21 @@ export function WhatsAppOverlay() {
       setStep("casualties");
       bot("Thanks. About how many people are injured or affected? (enter a number)");
     } else if (step === "casualties") {
-      const n = parseInt(val, 10) || 1;
+      const n = Math.max(1, parseInt(val, 10) || 1);
+      setCasualties(n);
+      setStep("details");
+      bot("What happened? Briefly describe the emergency and any immediate danger.");
+    } else if (step === "details") {
+      setDetails(val);
+      setStep("caller");
+      bot("What is your name, or the name of someone we can identify as the caller?");
+    } else if (step === "caller") {
+      setCaller(val);
+      setStep("phone");
+      bot("What phone number can responders use to call you back? Type 'none' if unavailable.");
+    } else if (step === "phone") {
+      const callbackPhone = lower === "none" ? "" : val;
+      setPhone(callbackPhone);
       const match = matchLocation((location || "").toLowerCase());
       const inc = await fileReport({
         type: type || "Other",
@@ -134,21 +164,22 @@ export function WhatsAppOverlay() {
         country: "Uganda",
         lat: match.lat,
         lng: match.lng,
-        casualties: n,
+        casualties,
         desc:
-          'Reported via WhatsApp chatbot — free-text location as typed by the caller: "' +
-          location +
-          '".',
+          `WhatsApp full intake. Details: "${details || "Not provided"}". ` +
+          `Caller: ${caller || "Not provided"}. Callback: ${callbackPhone || "Unavailable"}. ` +
+          `Location as typed: "${location}".`,
         source: "WhatsApp Chatbot",
-        reporter: "WhatsApp user",
+        reporter: caller || "WhatsApp user",
         channel: "WhatsApp",
         from: "WhatsApp chat session",
+        phone: callbackPhone || undefined,
       });
       const etaMsg = inc.assigned.length
         ? `${inc.assigned.length} unit(s) dispatched — nearest ETA ${inc.assigned[0].eta} min.`
         : "Searching for the nearest available unit.";
       bot(
-        `Report received. Ref: ${inc.id}\n${etaMsg}\nStay on this chat — I'll keep you posted.`,
+        `Report registered. Ref: ${inc.id}\n${etaMsg}\nAn admin has been alerted in the SafeLink operations queue. Keep this chat open for updates.`,
       );
       setQuick(["Check report status"]);
       setStep("root");
