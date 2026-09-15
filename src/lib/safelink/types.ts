@@ -99,6 +99,7 @@ export interface Incident {
   desc: string;
   source: string;
   reporter: string;
+  contactPhone?: string;
   status: IncidentStatus;
   assigned: Assignment[];
   time: string;
