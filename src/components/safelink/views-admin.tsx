@@ -131,6 +131,7 @@ export function AdminOverview() {
             "ID",
             "Type",
             "Location",
+            "Caller",
             "Casualties",
             "Status",
             "Assigned",
@@ -151,6 +152,10 @@ export function AdminOverview() {
                 <Td mono>{i.id}</Td>
                 <Td>{i.type}</Td>
                 <Td>{i.location}</Td>
+                <Td className="min-w-32 text-[11.5px]">
+                  <div>{i.reporter || "Not provided"}</div>
+                  <div className="font-mono text-mute">{i.contactPhone || "No phone"}</div>
+                </Td>
                 <Td>{i.casualties}</Td>
                 <Td>
                   <StatusBadge status={i.status} />

@@ -107,6 +107,7 @@ export async function ensureSeeded(): Promise<void> {
   await sql.query("alter table sl_hospitals add column if not exists operating_hours text not null default 'Open 24 hours'");
   await sql.query("alter table sl_hospitals add column if not exists whatsapp text not null default ''");
   await sql.query("alter table sl_incidents add column if not exists district text not null default ''");
+  await sql.query("alter table sl_incidents add column if not exists contact_phone text not null default ''");
 }
 
 async function loadMutable(): Promise<Mutable> {
@@ -219,6 +220,7 @@ function rowToIncident(r: Record<string, unknown>): Incident {
     desc: String(r.description),
     source: String(r.source),
     reporter: String(r.reporter),
+    contactPhone: String(r.contact_phone || ""),
     status: r.status as Incident["status"],
     assigned: parseJson(r.assigned, []),
     time: String(r.time_label),
@@ -353,8 +355,8 @@ async function saveIncident(sql: Sql, i: Incident): Promise<void> {
   await sql.query(
     `insert into sl_incidents
       (id, type, location, region, district, country, lat, lng, casualties, description,
-       source, reporter, status, time_label, reported_at, assigned, log, hospital_link)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17::jsonb,$18::jsonb)
+       source, reporter, contact_phone, status, time_label, reported_at, assigned, log, hospital_link)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17::jsonb,$18::jsonb,$19::jsonb)
      on conflict (id) do update set
        type = excluded.type,
        location = excluded.location,
@@ -366,6 +368,7 @@ async function saveIncident(sql: Sql, i: Incident): Promise<void> {
        description = excluded.description,
        source = excluded.source,
        reporter = excluded.reporter,
+       contact_phone = excluded.contact_phone,
        status = excluded.status,
        district = excluded.district,
        time_label = excluded.time_label,
@@ -386,6 +389,7 @@ async function saveIncident(sql: Sql, i: Incident): Promise<void> {
       i.desc,
       i.source,
       i.reporter,
+      i.contactPhone || "",
       i.status,
       i.time,
       i.reportedAt,

@@ -96,6 +96,10 @@ export function IncidentPanel() {
             <dt className="uppercase tracking-[0.08em] text-mute">Source</dt>
             <dd className="mt-0.5 text-sm">{inc.source}</dd>
           </div>
+          <div>
+            <dt className="uppercase tracking-[0.08em] text-mute">Caller phone</dt>
+            <dd className="mt-0.5 text-sm">{inc.contactPhone || call?.from || "Not provided"}</dd>
+          </div>
         </dl>
         <h3 className="mb-2 text-sm font-semibold">Assigned units</h3>
         <ul className="mb-4 space-y-2">
