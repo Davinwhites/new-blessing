@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Hospital, Incident, Unit } from "@/lib/safelink/types";
 
@@ -8,6 +8,13 @@ const UGANDA_BOUNDS: [[number, number], [number, number]] = [
   [-1.55, 29.55],
   [4.25, 35.05],
 ];
+
+const SERVICE_ZONES = [
+  { name: "Central", center: [0.31, 32.58] as [number, number], radius: 92000, color: "#e8b84a", summary: "Kampala, Wakiso, Mukono and surrounding districts" },
+  { name: "Eastern", center: [1.05, 33.85] as [number, number], radius: 118000, color: "#55b9e8", summary: "Jinja, Mbale, Soroti and eastern districts" },
+  { name: "Northern", center: [2.75, 32.35] as [number, number], radius: 145000, color: "#b88cff", summary: "Gulu, Lira, Arua, Moroto and northern districts" },
+  { name: "Western", center: [0.05, 30.45] as [number, number], radius: 120000, color: "#3ddc84", summary: "Mbarara, Fort Portal, Kabale and western districts" },
+] as const;
 
 function markerIcon(html: string, size: [number, number], anchor: [number, number]) {
   return L.divIcon({
@@ -152,7 +159,8 @@ function MapLegend({ provider }: { provider: string }) {
       <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-amber" />Unit en route</span>
       <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-alert" />On scene / incident</span>
       <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 bg-mute" />Hospital</span>
-      <span className="ml-auto font-mono text-[0.625rem] uppercase tracking-[0.12em]">{provider} · live positions</span>
+      {SERVICE_ZONES.map((zone) => <span key={zone.name} className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-sm" style={{ backgroundColor: zone.color }} />{zone.name} zone</span>)}
+      <span className="ml-auto font-mono text-[0.625rem] uppercase tracking-[0.12em]">{provider} · ambulance coverage</span>
     </div>
   );
 }
@@ -174,10 +182,28 @@ function LeafletMap({
     () => incidents.find((i) => i.id === selectedId),
     [incidents, selectedId],
   );
+  const [region, setRegion] = useState("All Uganda");
+  const visibleUnits = useMemo(
+    () => units.filter((unit) => unit.type !== "Ambulance" || region === "All Uganda" || unit.region === region),
+    [units, region],
+  );
 
   return (
     <div className="overflow-hidden rounded-lg bg-panel-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
       <GoogleMapSources selected={selected} />
+      <div className="flex flex-col gap-2 border-b border-line px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold text-ink">Ambulance coverage zones</p>
+          <p className="text-[11px] text-mute">Colored zones show the operational area of known services.</p>
+        </div>
+        <label className="flex items-center gap-2 text-xs text-mute">
+          <span className="sr-only">Filter ambulance coverage by region</span>
+          <select value={region} onChange={(event) => setRegion(event.target.value)} className="min-h-9 rounded-md border border-line bg-panel px-2 text-xs text-ink">
+            <option>All Uganda</option>
+            {SERVICE_ZONES.map((zone) => <option key={zone.name}>{zone.name}</option>)}
+          </select>
+        </label>
+      </div>
       <div className="h-[min(56vh,440px)] min-h-[280px] w-full">
         <MapContainer
           center={UGANDA_CENTER}
@@ -196,6 +222,11 @@ function LeafletMap({
           />
           <Invalidate />
           {selected && <FlyTo lat={selected.lat} lng={selected.lng} />}
+          {SERVICE_ZONES.filter((zone) => region === "All Uganda" || zone.name === region).map((zone) => (
+            <Circle key={zone.name} center={zone.center} radius={zone.radius} pathOptions={{ color: zone.color, fillColor: zone.color, fillOpacity: 0.12, weight: 2 }}>
+              <Tooltip sticky><strong>{zone.name} service zone</strong><br />{zone.summary}</Tooltip>
+            </Circle>
+          ))}
           {hospitals.map((h) => (
             <Marker key={h.id} position={[h.lat, h.lng]} icon={hospitalPin()} zIndexOffset={10}>
               <Popup>
@@ -209,7 +240,7 @@ function LeafletMap({
               </Popup>
             </Marker>
           ))}
-          {units.map((u) => (
+          {visibleUnits.map((u) => (
             <Marker
               key={u.id}
               position={[u.lat, u.lng]}
