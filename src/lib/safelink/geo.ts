@@ -1,8 +1,13 @@
 import { BOUNDS } from "./constants";
 
 export function nowStr(): string {
-  const d = new Date();
-  return d.toTimeString().slice(0, 8);
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Kampala",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date());
 }
 
 export function haversineKm(
