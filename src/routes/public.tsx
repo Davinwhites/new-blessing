@@ -1,15 +1,16 @@
 import { useMemo, useState, useEffect } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { PublicReportView } from "@/components/safelink/views-ops";
+import { WhatsAppOverlay } from "@/components/safelink/whatsapp";
 import { Wordmark } from "@/components/safelink/mark";
 import { useOps } from "@/lib/safelink/store";
-import { SAFELINK_NUMBERS } from "@/lib/safelink/constants";
 
 export const Route = createFileRoute("/public")({ component: PublicEmergencyPage });
 
 export function PublicEmergencyPage() {
   const hydrated = useOps((state) => state.hydrated);
   const hydrate = useOps((state) => state.hydrate);
+  const setWaOpen = useOps((state) => state.setWaOpen);
 
   useEffect(() => {
     void hydrate();
@@ -34,13 +35,14 @@ export function PublicEmergencyPage() {
           <p className="mt-3 max-w-xl text-sm leading-6 text-mute">No username or password is required. Share the emergency details and the response team will receive it in the national queue.</p>
         </div>
         <PublicReportView />
-        <ProviderDirectory />
+        <ProviderDirectory onOpenChat={() => setWaOpen(true)} />
       </section>
+      <WhatsAppOverlay />
     </main>
   );
 }
 
-function ProviderDirectory() {
+function ProviderDirectory({ onOpenChat }: { onOpenChat: () => void }) {
   const hospitals = useOps((state) => state.hospitals);
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState("All regions");
@@ -61,7 +63,7 @@ function ProviderDirectory() {
           <h2 id="provider-directory-title" className="text-2xl font-semibold tracking-tight">Find help near you</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-mute">Browse verified health and emergency providers by region. Contact providers directly for availability before travelling.</p>
         </div>
-        <a href={`https://wa.me/${SAFELINK_NUMBERS.whatsapp.replace(/\\D/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ok px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-110">Chat on WhatsApp</a>
+        <button type="button" onClick={onOpenChat} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ok px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-110">Chat on WhatsApp</button>
       </div>
       <div className="mb-5 grid gap-3 rounded-xl border border-line bg-panel-2 p-3 sm:grid-cols-[1fr_220px]">
         <label className="sr-only" htmlFor="provider-search">Search providers</label>
