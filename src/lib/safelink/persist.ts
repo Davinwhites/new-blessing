@@ -526,7 +526,10 @@ export async function loginOperator(input: {
   if (!verifyPassword(row.username, input.password, row.password_hash)) {
     return { ok: false, error: "Incorrect username or password." };
   }
-  const snapshot = await loadSnapshot(true);
+  // Authentication should not wait for the simulation tick to write unit movement.
+  // The dashboard already refreshes live state after sign-in, so read the snapshot
+  // without the extra tick/save round-trip here.
+  const snapshot = await loadSnapshot(false);
   return {
     ok: true,
     user: row.username,
